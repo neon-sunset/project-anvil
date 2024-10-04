@@ -18,6 +18,12 @@ public ref struct ScopedEnumerator<T>: IEnumerator<T> {
         end = ref Unsafe.Add(ref current, span.Length);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal ScopedEnumerator(ref T start, nuint length) {
+        current = ref start;
+        end = ref Unsafe.Add(ref start, length);
+    }
+
     public T Current { readonly get; private set; } = default!;
 
     readonly object IEnumerator.Current => Current!;

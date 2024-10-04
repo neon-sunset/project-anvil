@@ -108,8 +108,6 @@ where A: ManagedAllocator {
                 .ThrowIfGreaterThanOrEqual((uint)index, (uint)Count);
             return ref Unsafe.Add(
                 ref MemoryMarshal.GetArrayDataReference(items!), (nint)(uint)index);
-            [DoesNotReturn, StackTraceHidden]
-            static void Throw() => throw new IndexOutOfRangeException();
         }
     }
 
@@ -132,32 +130,17 @@ where A: ManagedAllocator {
         return MemoryMarshal.CreateSpan(ref ptr, Count);
     }
 
-    public void Add(T item) {
-        var count = (uint)Count;
-        if (items is null || count >= (uint)items.Length)
-            goto Grow;
-        Add:
-        items[count++] = item;
-        Count = (int)count;
-        return;
-    Grow:
-        Grow();
-        goto Add;
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void AddRange(ReadOnlySpan<T> source) {
+    public void Add(T item) {
+        var array = items;
         var count = Count;
-        var capacity = source.Length;
-        if (items is null || capacity - count < source.Length)
-            goto Grow;
-    AddRange:
-        source.CopyTo(AsSpan()[count..]);
-        Count = count + source.Length;
-        return;
-    Grow:
-        Grow();
-        goto AddRange;
+        if (array != null && (uint)count < (uint)array.Length) {
+            array[count++] = item;
+            Count = count;
+            return;
+        }
+
+        AddGrow(item);
     }
 
     public void Clear() {
@@ -209,7 +192,26 @@ where A: ManagedAllocator {
         if (index < Count) {
             AsSpan()[(index + 1)..].CopyTo(AsSpan()[index..]);
         }
-        items![Count] = default!;
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) {
+            items![Count] = default!;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    void AddGrow(T item) {
+        var array = items;
+        var count = Count;
+
+        if (array != null) {
+            array = A.ReallocArray(array, count, count * 2);
+        }
+        else {
+            array = A.AllocArray<T>(MinSize);
+        }
+
+        array[count++] = item;
+        items = array;
+        Count = count;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -219,27 +221,14 @@ where A: ManagedAllocator {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {
-        if (items != null) {
-            A.FreeArray(items);
+        var array = Interlocked.Exchange(ref items, null);
+        if (array != null) {
             items = null;
             Count = 0;
+            A.FreeArray(array);
         }
     }
 
     readonly IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    [MemberNotNull(nameof(items))]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    void Grow() {
-        if (items != null) {
-            var previous = items.AsSpan();
-            var upsized = A.AllocArray<T>(items.Length * 2);
-            previous.CopyTo(upsized);
-            items = upsized;
-        }
-        else {
-            items = A.AllocArray<T>(MinSize);
-        }
-    }
 }

@@ -73,7 +73,7 @@ public readonly struct Pool: ManagedAllocator {
     }
 }
 
-public readonly unsafe struct Native: UnmanagedAllocator {
+public readonly unsafe struct Native: UnmanagedAllocator, ScopedAllocator {
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static T* Alloc<T>(nuint size) where T: unmanaged =>
         (T*)NativeMemory.Alloc(size * (nuint)sizeof(T));
@@ -85,4 +85,34 @@ public readonly unsafe struct Native: UnmanagedAllocator {
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void Free<T>(T* ptr) where T: unmanaged =>
         NativeMemory.Free(ptr);
+
+#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static ref T AllocRange<T>(nuint length) {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(
+            RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
+
+        return ref Unsafe.AsRef<T>(NativeMemory.Alloc(length * (nuint)Unsafe.SizeOf<T>()));
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static ref T ReallocRange<T>(ref T range, nuint oldLength, nuint newLength) {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(
+            RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
+
+        var s = MemoryMarshal.CreateSpan(ref range, 1);
+        fixed (T* ptr = s) {
+            return ref Unsafe.AsRef<T>(
+                NativeMemory.Realloc(ptr, newLength * (nuint)Unsafe.SizeOf<T>()));
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void FreeRange<T>(ref T range) {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(
+            RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
+
+        NativeMemory.Free(Unsafe.AsPointer(ref range));
+    }
+#pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 }
