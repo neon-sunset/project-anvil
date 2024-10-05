@@ -135,7 +135,9 @@ where A: ManagedAllocator {
         var array = items;
         var count = Count;
         if (array != null && (uint)count < (uint)array.Length) {
-            array[count++] = item;
+            Unsafe.Add(
+                ref MemoryMarshal.GetArrayDataReference(array),
+                (nint)(uint)count++) = item;
             Count = count;
             return;
         }
@@ -203,7 +205,7 @@ where A: ManagedAllocator {
         var count = Count;
 
         if (array != null) {
-            array = A.ReallocArray(array, count, count * 2);
+            array = A.ReallocArray(array, count * 2);
         }
         else {
             array = A.AllocArray<T>(MinSize);

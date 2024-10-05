@@ -5,15 +5,15 @@ using System.Runtime.InteropServices;
 
 namespace Anvil.Core.Collections;
 
-public static class ScopedVec {
+public static class SVec {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ScopedVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
+    public static SVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
     where A: ScopedAllocator => new(items);
 }
 
 [SkipLocalsInit]
-[CollectionBuilder(typeof(ScopedVec), nameof(ScopedVec.Create))]
-public ref struct ScopedVec<T, A>: IList<T>, IDisposable
+[CollectionBuilder(typeof(SVec), nameof(SVec.Create))]
+public ref struct SVec<T, A>: IList<T>, IDisposable
 where A: ScopedAllocator {
     static nuint MinSize {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -25,21 +25,21 @@ where A: ScopedAllocator {
     internal nuint capacity;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ScopedVec() {
+    public SVec() {
         items = ref Unsafe.NullRef<T>();
         count = 0;
         capacity = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ScopedVec(nuint capacity) {
+    public SVec(nuint capacity) {
         items = ref A.AllocRange<T>(capacity);
         count = 0;
         this.capacity = capacity;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ScopedVec(ReadOnlySpan<T> source) {
+    public SVec(ReadOnlySpan<T> source) {
         ref var ptr = ref A.AllocRange<T>((uint)source.Length);
         source.CopyTo(MemoryMarshal.CreateSpan(ref ptr, source.Length));
 
@@ -143,9 +143,9 @@ where A: ScopedAllocator {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator Span<T>(ScopedVec<T, A> source) => source.AsSpan();
+    public static implicit operator Span<T>(SVec<T, A> source) => source.AsSpan();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator ReadOnlySpan<T>(ScopedVec<T, A> source) => source.AsSpan();
+    public static implicit operator ReadOnlySpan<T>(SVec<T, A> source) => source.AsSpan();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {

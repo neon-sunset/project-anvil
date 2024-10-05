@@ -3,16 +3,16 @@ using System.Runtime.CompilerServices;
 
 namespace Anvil.Core.Collections;
 
-public static class NativeVec {
+public static class NVec {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static NativeVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
+    public static NVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
     where T: unmanaged
     where A: NativeAllocator => new(items);
 }
 
 [SkipLocalsInit]
-[CollectionBuilder(typeof(NativeVec), nameof(NativeVec.Create))]
-public unsafe struct NativeVec<T, A>: IList<T>, IDisposable
+[CollectionBuilder(typeof(NVec), nameof(NVec.Create))]
+public unsafe struct NVec<T, A>: IList<T>, IDisposable
 where T: unmanaged
 where A: NativeAllocator {
     static nuint MinSize {
@@ -25,21 +25,21 @@ where A: NativeAllocator {
     internal nuint capacity;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public NativeVec() {
+    public NVec() {
         items = null;
         count = 0;
         capacity = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public NativeVec(nuint capacity) {
+    public NVec(nuint capacity) {
         items = A.Alloc<T>(capacity);
         count = 0;
         this.capacity = capacity;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public NativeVec(ReadOnlySpan<T> source) {
+    public NVec(ReadOnlySpan<T> source) {
         var ptr = A.Alloc<T>((uint)source.Length);
         source.CopyTo(new(ptr, source.Length));
 
@@ -68,6 +68,7 @@ where A: NativeAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Span<T> AsSpan() => new(items, int.CreateChecked(count));
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item) {
         var cnt = count;
         if (cnt < capacity) {
@@ -136,9 +137,9 @@ where A: NativeAllocator {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator Span<T>(NativeVec<T, A> source) => source.AsSpan();
+    public static implicit operator Span<T>(NVec<T, A> source) => source.AsSpan();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator ReadOnlySpan<T>(NativeVec<T, A> source) => source.AsSpan();
+    public static implicit operator ReadOnlySpan<T>(NVec<T, A> source) => source.AsSpan();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {
@@ -169,7 +170,7 @@ where A: NativeAllocator {
     void AddGrow(T item) {
         var (ptr, cnt, cap) = this;
 
-        if (ptr != null) {
+        if (cap != 0) {
             cap *= 2;
             ptr = A.Realloc(ptr, cap);
         }
