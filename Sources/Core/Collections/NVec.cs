@@ -74,10 +74,9 @@ where A: NativeAllocator {
         if (cnt < capacity) {
             items[cnt++] = item;
             count = cnt;
-            return;
+        } else {
+            AddGrow(item);
         }
-
-        AddGrow(item);
     }
 
     public void Clear() => count = 0;

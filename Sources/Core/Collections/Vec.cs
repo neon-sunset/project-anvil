@@ -77,11 +77,11 @@ where A: ManagedAllocator {
         get => (typeof(A) == typeof(Pool) ? 128 : 32) / Unsafe.SizeOf<T>();
     }
 
-    internal T[]? items;
+    internal T[] items;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vec() {
-        items = null;
+        items = A.AllocArray<T>(0);
         Count = 0;
     }
 
@@ -104,16 +104,17 @@ where A: ManagedAllocator {
 
     public readonly ref T this[int index] {
         get {
+            var offset = (uint)index;
             ArgumentOutOfRangeException
-                .ThrowIfGreaterThanOrEqual((uint)index, (uint)Count);
+                .ThrowIfGreaterThanOrEqual(offset, (uint)Count);
             return ref Unsafe.Add(
-                ref MemoryMarshal.GetArrayDataReference(items!), (nint)(uint)index);
+                ref MemoryMarshal.GetArrayDataReference(items!), offset);
         }
     }
 
     readonly T IList<T>.this[int index] {
         get => this[index];
-        set => throw new NotImplementedException();
+        set => this[index] = value;
     }
 
     public int Count { readonly get; internal set; }
@@ -134,15 +135,12 @@ where A: ManagedAllocator {
     public void Add(T item) {
         var array = items;
         var count = Count;
-        if (array != null && (uint)count < (uint)array.Length) {
-            Unsafe.Add(
-                ref MemoryMarshal.GetArrayDataReference(array),
-                (nint)(uint)count++) = item;
+        if ((uint)count < (uint)array.Length) {
+            array[count++] = item;
             Count = count;
-            return;
+        } else {
+            AddGrow(item);
         }
-
-        AddGrow(item);
     }
 
     public void Clear() {
@@ -223,9 +221,10 @@ where A: ManagedAllocator {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {
-        var array = Interlocked.Exchange(ref items, null);
+        if (typeof(A) == typeof(GC)) return;
+        var array = Interlocked.Exchange(ref items, null!);
         if (array != null) {
-            items = null;
+            items = null!;
             Count = 0;
             A.FreeArray(array);
         }

@@ -22,7 +22,7 @@ public class VecVsList {
 
     [Benchmark, ArgumentsSource(nameof(Counts))]
     public int AddToVecGC(int n) {
-        using var vec = new Vec<int, GC>(n);
+        var vec = new Vec<int, GC>(n);
         for (var i = 0; i < n; i++) {
             vec.Add(i);
         }

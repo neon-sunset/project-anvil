@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -75,9 +74,9 @@ where A: ScopedAllocator {
             Unsafe.Add(ref items, cnt++) = item;
             count = cnt;
             return;
+        } else {
+            AddGrow(item);
         }
-
-        AddGrow(item);
     }
 
     public void Clear() {
