@@ -19,7 +19,7 @@ public interface ScopedAllocator {
     static abstract void FreeRange<T>(ref T range);
 }
 
-public unsafe interface UnmanagedAllocator {
+public unsafe interface NativeAllocator {
     static abstract T* Alloc<T>(nuint size) where T: unmanaged;
     static abstract T* Realloc<T>(T* ptr, nuint newSize) where T: unmanaged;
     static abstract void Free<T>(T* ptr) where T: unmanaged;
@@ -73,7 +73,7 @@ public readonly struct Pool: ManagedAllocator {
     }
 }
 
-public readonly unsafe struct Native: UnmanagedAllocator, ScopedAllocator {
+public readonly unsafe struct Native: NativeAllocator, ScopedAllocator {
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static T* Alloc<T>(nuint size) where T: unmanaged =>
         (T*)NativeMemory.Alloc(size * (nuint)sizeof(T));

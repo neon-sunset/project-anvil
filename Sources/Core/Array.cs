@@ -43,13 +43,13 @@ public ref struct ScopedEnumerator<T>: IEnumerator<T> {
     readonly void IEnumerator.Reset() => throw new NotSupportedException();
 }
 
-public unsafe struct UnmanagedEnumerator<T>: IEnumerator<T>
+public unsafe struct NativeEnumerator<T>: IEnumerator<T>
 where T: unmanaged {
     readonly T* end;
     T* current;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal UnmanagedEnumerator(T* start, nuint length) {
+    internal NativeEnumerator(T* start, nuint length) {
         current = start;
         end = start + length;
     }

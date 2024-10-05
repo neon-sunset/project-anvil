@@ -1,21 +1,20 @@
 using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace Anvil.Core.Collections;
 
-public static class UnmanagedVec {
+public static class NativeVec {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static UnmanagedVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
+    public static NativeVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
     where T: unmanaged
-    where A: UnmanagedAllocator => new(items);
+    where A: NativeAllocator => new(items);
 }
 
 [SkipLocalsInit]
-[CollectionBuilder(typeof(UnmanagedVec), nameof(UnmanagedVec.Create))]
-public unsafe struct UnmanagedVec<T, A>: IList<T>, IDisposable
+[CollectionBuilder(typeof(NativeVec), nameof(NativeVec.Create))]
+public unsafe struct NativeVec<T, A>: IList<T>, IDisposable
 where T: unmanaged
-where A: UnmanagedAllocator {
+where A: NativeAllocator {
     static nuint MinSize {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => 128 / (nuint)sizeof(T);
@@ -26,21 +25,21 @@ where A: UnmanagedAllocator {
     internal nuint capacity;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public UnmanagedVec() {
+    public NativeVec() {
         items = null;
         count = 0;
         capacity = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public UnmanagedVec(nuint capacity) {
+    public NativeVec(nuint capacity) {
         items = A.Alloc<T>(capacity);
         count = 0;
         this.capacity = capacity;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public UnmanagedVec(ReadOnlySpan<T> source) {
+    public NativeVec(ReadOnlySpan<T> source) {
         var ptr = A.Alloc<T>((uint)source.Length);
         source.CopyTo(new(ptr, source.Length));
 
@@ -91,7 +90,7 @@ where A: UnmanagedAllocator {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly UnmanagedEnumerator<T> GetEnumerator() => new(items, count);
+    public readonly NativeEnumerator<T> GetEnumerator() => new(items, count);
 
     public readonly int IndexOf(T item) {
         // TODO: Write optimal dispatch here
@@ -137,9 +136,9 @@ where A: UnmanagedAllocator {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator Span<T>(UnmanagedVec<T, A> source) => source.AsSpan();
+    public static implicit operator Span<T>(NativeVec<T, A> source) => source.AsSpan();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator ReadOnlySpan<T>(UnmanagedVec<T, A> source) => source.AsSpan();
+    public static implicit operator ReadOnlySpan<T>(NativeVec<T, A> source) => source.AsSpan();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {
