@@ -9,11 +9,11 @@ namespace Benchmarks;
 [MemoryDiagnoser]
 public class VecVsList {
 
-    public IEnumerable<int> Counts => [4, 10, 50, 100, 10_000];
+    public IEnumerable<int> Counts => [4, 10, 50, 100, 10_000, 1024 * 1024];
 
     [Benchmark, ArgumentsSource(nameof(Counts))]
     public int AddToList(int n) {
-        var list = new List<int>(n);
+        var list = new List<int>();
         for (var i = 0; i < n; i++) {
             list.Add(i);
         }
@@ -22,7 +22,7 @@ public class VecVsList {
 
     [Benchmark, ArgumentsSource(nameof(Counts))]
     public int AddToVecGC(int n) {
-        var vec = new Vec<int, GC>(n);
+        var vec = new Vec<int, GC>();
         for (var i = 0; i < n; i++) {
             vec.Add(i);
         }
@@ -31,7 +31,7 @@ public class VecVsList {
 
     [Benchmark, ArgumentsSource(nameof(Counts))]
     public int AddToVecPooled(int n) {
-        using var vec = new Vec<int, Pool>(n);
+        using var vec = new Vec<int, Pool>();
         for (var i = 0; i < n; i++) {
             vec.Add(i);
         }
@@ -39,8 +39,26 @@ public class VecVsList {
     }
 
     [Benchmark, ArgumentsSource(nameof(Counts))]
-    public int AddToVecScopedNative(int n) {
-        using var vec = new NVec<int, Global>((uint)n);
+    public int AddToNVecGlobal(int n) {
+        using var vec = new NVec<int, Global>();
+        for (var i = 0; i < n; i++) {
+            vec.Add(i);
+        }
+        return vec[vec.Count - 1];
+    }
+
+    [Benchmark, ArgumentsSource(nameof(Counts))]
+    public int AddToNVecJemalloc(int n) {
+        using var vec = new NVec<int, Jemalloc>();
+        for (var i = 0; i < n; i++) {
+            vec.Add(i);
+        }
+        return vec[vec.Count - 1];
+    }
+
+    [Benchmark, ArgumentsSource(nameof(Counts))]
+    public int AddToNVecMimalloc(int n) {
+        using var vec = new NVec<int, Mimalloc>();
         for (var i = 0; i < n; i++) {
             vec.Add(i);
         }

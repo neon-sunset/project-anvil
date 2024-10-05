@@ -1,6 +1,4 @@
 using System.Collections;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -16,7 +14,7 @@ public static class Vec {
         var items = source.ToArray();
         return new() {
             items = items,
-            Count = items.Length
+            count = items.Length
         };
     }
 
@@ -24,7 +22,7 @@ public static class Vec {
     public static Vec<T, GC> Wrap<T>(T[] items) {
         return new() {
             items = items,
-            Count = items.Length
+            count = items.Length
         };
     }
 
@@ -77,18 +75,19 @@ where A: ManagedAllocator {
         get => (typeof(A) == typeof(Pool) ? 128 : 32) / Unsafe.SizeOf<T>();
     }
 
-    internal T[] items;
+    internal T[]? items;
+    internal int count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vec() {
-        items = A.AllocArray<T>(0);
-        Count = 0;
+        items = null;
+        count = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vec(int capacity) {
         items = A.AllocArray<T>(capacity);
-        Count = 0;
+        count = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -99,14 +98,14 @@ where A: ManagedAllocator {
             source.Length));
 
         items = array;
-        Count = source.Length;
+        count = source.Length;
     }
 
     public readonly ref T this[int index] {
         get {
             var offset = (uint)index;
             ArgumentOutOfRangeException
-                .ThrowIfGreaterThanOrEqual(offset, (uint)Count);
+                .ThrowIfGreaterThanOrEqual(offset, (uint)count);
             return ref Unsafe.Add(
                 ref MemoryMarshal.GetArrayDataReference(items!), offset);
         }
@@ -117,7 +116,7 @@ where A: ManagedAllocator {
         set => this[index] = value;
     }
 
-    public int Count { readonly get; internal set; }
+    public readonly int Count => count;
 
     public readonly bool IsReadOnly => false;
 
@@ -128,23 +127,23 @@ where A: ManagedAllocator {
         if (arr != null) {
             ptr = ref MemoryMarshal.GetArrayDataReference(arr)!;
         }
-        return MemoryMarshal.CreateSpan(ref ptr, Count);
+        return MemoryMarshal.CreateSpan(ref ptr, count);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item) {
-        var array = items;
-        var count = Count;
-        if ((uint)count < (uint)array.Length) {
-            array[count++] = item;
-            Count = count;
+        var arr = items;
+        var cnt = count;
+        if ((uint)count < (uint)(arr?.Length ?? 0)) {
+            arr![cnt++] = item;
+            count = cnt;
         } else {
             AddGrow(item);
         }
     }
 
     public void Clear() {
-        Count = 0;
+        count = 0;
         if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) {
             items.AsSpan().Clear();
         }
@@ -162,17 +161,17 @@ where A: ManagedAllocator {
     public readonly Vec.Enumerator<T> GetEnumerator() => new(items, Count);
 
     public readonly int IndexOf(T item) =>
-        items != null ? Array.IndexOf(items, item, 0, Count) : -1;
+        items != null ? Array.IndexOf(items, item, 0, count) : -1;
 
     public void Insert(int index, T item) {
         throw new NotImplementedException();
     }
 
     public T Pop() {
-        if (Count == 0) {
+        if (count < 1) {
             throw new InvalidOperationException("Empty Vec");
         }
-        return items![--Count];
+        return items![--count];
     }
 
     public bool Remove(T item) {
@@ -188,30 +187,27 @@ where A: ManagedAllocator {
         ArgumentOutOfRangeException
             .ThrowIfGreaterThanOrEqual((uint)index, (uint)Count);
 
-        Count--;
-        if (index < Count) {
+        count--;
+        if (index < count) {
             AsSpan()[(index + 1)..].CopyTo(AsSpan()[index..]);
         }
         if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) {
-            items![Count] = default!;
+            items![count] = default!;
         }
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void AddGrow(T item) {
-        var array = items;
-        var count = Count;
+        var arr = items;
+        var cnt = count;
 
-        if (array != null) {
-            array = A.ReallocArray(array, count * 2);
-        }
-        else {
-            array = A.AllocArray<T>(MinSize);
-        }
+        arr = arr != null
+            ? A.ReallocArray(arr, cnt * 2)
+            : A.AllocArray<T>(MinSize);
 
-        array[count++] = item;
-        items = array;
-        Count = count;
+        arr[cnt++] = item;
+        items = arr;
+        count = cnt;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -225,7 +221,7 @@ where A: ManagedAllocator {
         var array = Interlocked.Exchange(ref items, null!);
         if (array != null) {
             items = null!;
-            Count = 0;
+            count = 0;
             A.FreeArray(array);
         }
     }

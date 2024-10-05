@@ -100,7 +100,7 @@ public readonly unsafe struct Global: NativeAllocator, ScopedAllocator {
     }
 
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref T AllocRange<T>(nuint length) {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
@@ -112,7 +112,7 @@ public readonly unsafe struct Global: NativeAllocator, ScopedAllocator {
         return ref Unsafe.AsRef<T>(NativeMemory.Alloc(length * (nuint)sizeof(T)));
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref T ReallocRange<T>(ref T range, nuint oldLength, nuint newLength) {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
@@ -126,7 +126,7 @@ public readonly unsafe struct Global: NativeAllocator, ScopedAllocator {
             NativeMemory.Realloc(ptr, newLength * (nuint)sizeof(T)));
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void FreeRange<T>(ref T range) {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
@@ -141,21 +141,89 @@ public readonly unsafe struct Global: NativeAllocator, ScopedAllocator {
 #pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 }
 
+public readonly unsafe partial struct Jemalloc: NativeAllocator {
+    const string Name = "jemalloc";
+
+    [SuppressGCTransition]
+    [DllImport(Name, EntryPoint = "malloc")]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static extern void* Malloc(nuint size);
+
+    [SuppressGCTransition]
+    [DllImport(Name, EntryPoint = "realloc")]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static extern void* Realloc(void* ptr, nuint newSize);
+
+    [SuppressGCTransition]
+    [DllImport(Name, EntryPoint = "free")]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static extern void Free(void* ptr);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static unsafe T* Alloc<T>(nuint size) where T : unmanaged {
+        return (T*)Malloc(size * (nuint)sizeof(T));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static unsafe T* Realloc<T>(T* ptr, nuint newSize) where T : unmanaged {
+        return (T*)Realloc((void*)ptr, newSize * (nuint)sizeof(T));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static unsafe void Free<T>(T* ptr) where T : unmanaged {
+        Free((void*)ptr);
+    }
+}
+
+public readonly unsafe partial struct Mimalloc: NativeAllocator {
+    const string Name = "mimalloc";
+
+    [SuppressGCTransition]
+    [DllImport(Name, EntryPoint = "malloc")]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static extern void* Malloc(nuint size);
+
+    [SuppressGCTransition]
+    [DllImport(Name, EntryPoint = "realloc")]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static extern void* Realloc(void* ptr, nuint newSize);
+
+    [SuppressGCTransition]
+    [DllImport(Name, EntryPoint = "free")]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static extern void Free(void* ptr);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static unsafe T* Alloc<T>(nuint size) where T : unmanaged {
+        return (T*)Malloc(size * (nuint)sizeof(T));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static unsafe T* Realloc<T>(T* ptr, nuint newSize) where T : unmanaged {
+        return (T*)Realloc((void*)ptr, newSize * (nuint)sizeof(T));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static unsafe void Free<T>(T* ptr) where T : unmanaged {
+        Free((void*)ptr);
+    }
+}
+
 [SupportedOSPlatform("linux")]
 [SupportedOSPlatform("macos")]
-static unsafe partial class Posix {
+static unsafe class Posix {
     [SuppressGCTransition]
-    [LibraryImport("libc", EntryPoint = "malloc")]
+    [DllImport("libc", EntryPoint = "malloc")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static partial void* Malloc(nuint size);
+    public static extern void* Malloc(nuint size);
 
     [SuppressGCTransition]
-    [LibraryImport("libc", EntryPoint = "realloc")]
+    [DllImport("libc", EntryPoint = "realloc")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static partial void* Realloc(void* ptr, nuint newSize);
+    public static extern void* Realloc(void* ptr, nuint newSize);
 
     [SuppressGCTransition]
-    [LibraryImport("libc", EntryPoint = "free")]
+    [DllImport("libc", EntryPoint = "free")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static partial void Free(void* ptr);
+    public static extern void Free(void* ptr);
 }

@@ -165,20 +165,14 @@ where A: NativeAllocator {
     readonly IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void AddGrow(T item) {
         var (ptr, cnt, cap) = this;
 
-        if (cap != 0) {
-            cap *= 2;
-            ptr = A.Realloc(ptr, cap);
-        }
-        else {
-            cap = MinSize;
-            ptr = A.Alloc<T>(cap);
-        }
-
+        cap = cap != 0 ? cap * 2 : MinSize;
+        ptr = A.Realloc(ptr, cap);
         ptr[cnt++] = item;
+
         items = ptr;
         count = cnt;
         capacity = cap;
