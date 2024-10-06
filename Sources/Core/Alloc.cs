@@ -27,21 +27,29 @@ public unsafe interface NativeAllocator {
 }
 
 public readonly struct GC: ManagedAllocator, ScopedAllocator {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T[] AllocArray<T>(int length) => new T[length];
 
-    public static T[] ReallocArray<T>(T[] array, int newLength) {
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static T[] ReallocArray<T>(T[]? array, int newLength) {
         var result = new T[newLength];
-        array.AsSpan().CopyTo(result);
+
+        var src = array.AsSpan();
+        var dst = MemoryMarshal.CreateSpan(
+            ref MemoryMarshal.GetArrayDataReference(result), src.Length);
+        src.CopyTo(dst);
+
         return result;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void FreeArray<T>(T[]? array) { }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref T AllocRange<T>(nuint length) =>
         ref MemoryMarshal.GetArrayDataReference(new T[length]);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static ref T ReallocRange<T>(ref T range, nuint oldLength, nuint newLength) {
         var result = new T[newLength];
         MemoryMarshal
@@ -50,19 +58,27 @@ public readonly struct GC: ManagedAllocator, ScopedAllocator {
         return ref MemoryMarshal.GetArrayDataReference(result);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void FreeRange<T>(ref T range) { }
 }
 
 public readonly struct Pool: ManagedAllocator {
     public static T[] AllocArray<T>(int length) => ArrayPool<T>.Shared.Rent(length);
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static T[] ReallocArray<T>(T[] array, int newLength) {
         var result = ArrayPool<T>.Shared.Rent(newLength);
-        array.AsSpan().CopyTo(result);
+
+        var src = array.AsSpan();
+        var dst = MemoryMarshal.CreateSpan(
+            ref MemoryMarshal.GetArrayDataReference(result), src.Length);
+        src.CopyTo(dst);
+
         ArrayPool<T>.Shared.Return(array);
         return result;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static void FreeArray<T>(T[]? array) {
         if (array != null) {
             ArrayPool<T>.Shared.Return(array);
@@ -70,31 +86,92 @@ public readonly struct Pool: ManagedAllocator {
     }
 }
 
-public readonly unsafe struct Global: NativeAllocator, ScopedAllocator {
-    [MethodImpl(MethodImplOptions.NoInlining)]
+public readonly unsafe partial struct Global: NativeAllocator, ScopedAllocator {
+    [SupportedOSPlatform("windows")]
+    static partial class Ucrt {
+        [SuppressGCTransition]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [LibraryImport("ucrtbase", EntryPoint = "malloc")]
+        public static partial void* Malloc(nuint size);
+
+        [SuppressGCTransition]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [LibraryImport("ucrtbase", EntryPoint = "realloc")]
+        public static partial void* Realloc(void* ptr, nuint newSize);
+
+        [SuppressGCTransition]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [LibraryImport("ucrtbase", EntryPoint = "free")]
+        public static partial void Free(void* ptr);
+    }
+
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
+    [SupportedOSPlatform("freebsd")]
+    [UnsupportedOSPlatform("windows")]
+    static partial class Libc {
+        [SuppressGCTransition]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [LibraryImport("libc", EntryPoint = "malloc")]
+        public static partial void* Malloc(nuint size);
+
+        [SuppressGCTransition]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [LibraryImport("libc", EntryPoint = "realloc")]
+        public static partial void* Realloc(void* ptr, nuint newSize);
+
+        [SuppressGCTransition]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [LibraryImport("libc", EntryPoint = "free")]
+        public static partial void Free(void* ptr);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T* Alloc<T>(nuint size) where T : unmanaged {
-        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) {
-            return (T*)Posix.Malloc(size * (nuint)sizeof(T));
+        if (OperatingSystem.IsWindows()) {
+            return (T*)Ucrt.Malloc(size * (nuint)sizeof(T));
         }
+
+        // if (OperatingSystem.IsLinux() ||
+        //     OperatingSystem.IsMacOS() ||
+        //     OperatingSystem.IsFreeBSD()
+        // ) {
+        //     return (T*)Libc.Malloc(size * (nuint)sizeof(T));
+        // }
 
         return (T*)NativeMemory.Alloc(size * (nuint)sizeof(T));
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T* Realloc<T>(T* ptr, nuint newSize) where T : unmanaged {
-        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) {
-            return (T*)Posix.Realloc(ptr, newSize * (nuint)sizeof(T));
+        if (OperatingSystem.IsWindows()) {
+            return (T*)Ucrt.Realloc(ptr, newSize * (nuint)sizeof(T));
         }
+
+        // if (OperatingSystem.IsLinux() ||
+        //     OperatingSystem.IsMacOS() ||
+        //     OperatingSystem.IsFreeBSD()
+        // ) {
+        //     return (T*)Libc.Realloc(ptr, newSize * (nuint)sizeof(T));
+        // }
 
         return (T*)NativeMemory.Realloc(ptr, newSize * (nuint)sizeof(T));
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Free<T>(T* ptr) where T : unmanaged {
-        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) {
-            Posix.Free(ptr);
+        if (OperatingSystem.IsWindows()) {
+            Ucrt.Free(ptr);
             return;
         }
+
+        // if (OperatingSystem.IsLinux() ||
+        //     OperatingSystem.IsMacOS() ||
+        //     OperatingSystem.IsFreeBSD()
+        // ) {
+        //     Libc.Free(ptr);
+        //     return;
+        // }
 
         NativeMemory.Free(ptr);
     }
@@ -105,8 +182,15 @@ public readonly unsafe struct Global: NativeAllocator, ScopedAllocator {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
 
-        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) {
-            return ref Unsafe.AsRef<T>(Posix.Malloc(length * (nuint)sizeof(T)));
+        if (OperatingSystem.IsWindows()) {
+            return ref Unsafe.AsRef<T>(Ucrt.Malloc(length * (nuint)sizeof(T)));
+        }
+
+        if (OperatingSystem.IsLinux() ||
+            OperatingSystem.IsMacOS() ||
+            OperatingSystem.IsFreeBSD()
+        ) {
+            return ref Unsafe.AsRef<T>(Libc.Malloc(length * (nuint)sizeof(T)));
         }
 
         return ref Unsafe.AsRef<T>(NativeMemory.Alloc(length * (nuint)sizeof(T)));
@@ -117,13 +201,18 @@ public readonly unsafe struct Global: NativeAllocator, ScopedAllocator {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
 
-        var ptr = Unsafe.AsPointer(ref range);
-        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) {
-            return ref Unsafe.AsRef<T>(Posix.Realloc(ptr, newLength * (nuint)sizeof(T)));
+        if (OperatingSystem.IsWindows()) {
+            return ref Unsafe.AsRef<T>(Ucrt.Realloc(Unsafe.AsPointer(ref range), newLength * (nuint)sizeof(T)));
         }
 
-        return ref Unsafe.AsRef<T>(
-            NativeMemory.Realloc(ptr, newLength * (nuint)sizeof(T)));
+        if (OperatingSystem.IsLinux() ||
+            OperatingSystem.IsMacOS() ||
+            OperatingSystem.IsFreeBSD()
+        ) {
+            return ref Unsafe.AsRef<T>(Libc.Realloc(Unsafe.AsPointer(ref range), newLength * (nuint)sizeof(T)));
+        }
+
+        return ref Unsafe.AsRef<T>(NativeMemory.Realloc(Unsafe.AsPointer(ref range), newLength * (nuint)sizeof(T)));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -131,8 +220,16 @@ public readonly unsafe struct Global: NativeAllocator, ScopedAllocator {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
 
-        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) {
-            Posix.Free(Unsafe.AsPointer(ref range));
+        if (OperatingSystem.IsWindows()) {
+            Ucrt.Free(Unsafe.AsPointer(ref range));
+            return;
+        }
+
+        if (OperatingSystem.IsLinux() ||
+            OperatingSystem.IsMacOS() ||
+            OperatingSystem.IsFreeBSD()
+        ) {
+            Libc.Free(Unsafe.AsPointer(ref range));
             return;
         }
 
@@ -207,23 +304,4 @@ public readonly unsafe partial struct Mimalloc: NativeAllocator {
     public static unsafe void Free<T>(T* ptr) where T : unmanaged {
         Free((void*)ptr);
     }
-}
-
-[SupportedOSPlatform("linux")]
-[SupportedOSPlatform("macos")]
-static unsafe class Posix {
-    [SuppressGCTransition]
-    [DllImport("libc", EntryPoint = "malloc")]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static extern void* Malloc(nuint size);
-
-    [SuppressGCTransition]
-    [DllImport("libc", EntryPoint = "realloc")]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static extern void* Realloc(void* ptr, nuint newSize);
-
-    [SuppressGCTransition]
-    [DllImport("libc", EntryPoint = "free")]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static extern void Free(void* ptr);
 }

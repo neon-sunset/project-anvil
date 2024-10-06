@@ -75,12 +75,12 @@ where A: ManagedAllocator {
         get => (typeof(A) == typeof(Pool) ? 128 : 32) / Unsafe.SizeOf<T>();
     }
 
-    internal T[]? items;
+    internal T[] items;
     internal int count;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vec() {
-        items = null;
+        items = typeof(A) == typeof(GC) ? [] : A.AllocArray<T>(MinSize);
         count = 0;
     }
 
@@ -134,9 +134,9 @@ where A: ManagedAllocator {
     public void Add(T item) {
         var arr = items;
         var cnt = count;
-        if ((uint)count < (uint)(arr?.Length ?? 0)) {
-            arr![cnt++] = item;
-            count = cnt;
+        if ((uint)cnt < (uint)arr.Length) {
+            arr[cnt] = item;
+            count = cnt + 1;
         } else {
             AddGrow(item);
         }
@@ -200,12 +200,11 @@ where A: ManagedAllocator {
     void AddGrow(T item) {
         var arr = items;
         var cnt = count;
+        var cap = cnt != 0 ? cnt * 2 : MinSize;
 
-        arr = arr != null
-            ? A.ReallocArray(arr, cnt * 2)
-            : A.AllocArray<T>(MinSize);
+        arr = A.ReallocArray(arr, cap);
 
-        arr[cnt++] = item;
+        Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(arr), (uint)cnt++) = item;
         items = arr;
         count = cnt;
     }

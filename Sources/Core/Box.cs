@@ -9,12 +9,12 @@ namespace Anvil.Core;
 
 public static class Box {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Box<T> From<T>(T value)
+    public static Box<T> New<T>(T value)
     where T: struct => Unsafe.As<Box<T>>(value);
 
     [return: NotNullIfNotNull(nameof(option))]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Box<T>? From<T>(T? option)
+    public static Box<T>? New<T>(T? option)
     where T: struct => option.HasValue ? Unsafe.As<Box<T>>(option.Value) : null;
 }
 
@@ -25,11 +25,15 @@ public sealed class Box<T>:
     Into<Span<T>>,
     Ctor<T, Box<T>>,
     ConvUnscoped<object, Box<T>>,
-    TryConvUnscoped<object, Box<T>>
+    TryConvUnscoped<object, Box<T>>,
+    IDisposable
 where T : struct {
     Box() => throw new InvalidOperationException("Box<T> default constructor should never be used.");
 
-    public ref T Ref => ref this.AsMut();
+    public ref T Ref {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => ref Unsafe.As<StrongBox<T>>(this).Value;
+    }
 
     public T Into() => this;
 
@@ -65,7 +69,7 @@ where T : struct {
     public U Into<U>()
     where U: class => BoxImpl.Into<T, U>(this);
 
-    Span<T> Into<Span<T>>.Into() => new(ref this.AsMut());
+    Span<T> Into<Span<T>>.Into() => new(ref Ref);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator T(Box<T> box) {
@@ -73,7 +77,7 @@ where T : struct {
     }
 
     public override string ToString() {
-        return this.AsMut().ToString()!;
+        return Ref.ToString()!;
     }
 
     /// <inheritdoc/>
@@ -83,23 +87,18 @@ where T : struct {
 
     /// <inheritdoc/>
     public override int GetHashCode() {
-        return this.AsMut().GetHashCode();
+        return Ref.GetHashCode();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Dispose() {
+        if (default(T) is IDisposable) {
+            ((IDisposable)Ref).Dispose();
+        }
     }
 }
 
 file static class BoxImpl {
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static ref T AsMut<T>(this Box<T> box)
-    where T: struct {
-        return ref Unsafe.Unbox<T>(box);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static ref readonly T AsRef<T>(this Box<T> box)
-    where T: struct {
-        return ref Unsafe.Unbox<T>(box);
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static U Into<T, U>(Box<T> box)
     where T: struct

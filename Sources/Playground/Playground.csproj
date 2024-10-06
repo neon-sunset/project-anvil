@@ -10,12 +10,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
+    <IlcInstructionSet>native</IlcInstructionSet>
     <OptimizationPreference>Speed</OptimizationPreference>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
-    <DirectPInvoke Include="libjemalloc" />
+    <DirectPInvoke Include="ucrtbase" />
   </ItemGroup>
 
 </Project>

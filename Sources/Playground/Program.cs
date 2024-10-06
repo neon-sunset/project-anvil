@@ -1,18 +1,11 @@
 using Anvil.Core;
 using Anvil.Core.Collections;
 
-var num = 42;
-var numbox = Box.From(num);
+using var numbers = (NVec<int, Global>)[
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
+];
 
-Console.WriteLine(numbox);
-
-var res = 0;
-for (var i = 0; i < 100_000; i++) {
-    var vec = new NVec<int, Jemalloc>();
-    for (var j = 0; j < 10_000; j++) {
-        vec.Add(j);
-    }
-    res = vec[vec.Count - 1];
-    vec.Dispose();
+foreach (var number in numbers) {
+    Console.WriteLine(number);
 }
-Console.WriteLine(res);
