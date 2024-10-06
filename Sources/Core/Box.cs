@@ -5,17 +5,17 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-namespace Anvil.Core;
+namespace System;
 
 public static class Box {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Box<T> New<T>(T value)
     where T: struct => Unsafe.As<Box<T>>(value);
 
-    [return: NotNullIfNotNull(nameof(option))]
+    [return: NotNullIfNotNull(nameof(nullable))]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Box<T>? New<T>(T? option)
-    where T: struct => option.HasValue ? Unsafe.As<Box<T>>(option.Value) : null;
+    public static Box<T>? New<T>(T? nullable)
+    where T: struct => nullable.HasValue ? Unsafe.As<Box<T>>(nullable.Value) : null;
 }
 
 [DebuggerDisplay("{ToString(),raw}")]
@@ -27,7 +27,7 @@ public sealed class Box<T>:
     ConvUnscoped<object, Box<T>>,
     TryConvUnscoped<object, Box<T>>,
     IDisposable
-where T : struct {
+where T: struct {
     Box() => throw new InvalidOperationException("Box<T> default constructor should never be used.");
 
     public ref T Ref {

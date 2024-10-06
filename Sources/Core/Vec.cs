@@ -1,8 +1,9 @@
+using System.Allocators;
 using System.Collections;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Anvil.Core.Collections;
+namespace System;
 
 public static class Vec {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -10,7 +11,7 @@ public static class Vec {
     where A: ManagedAllocator => new(source);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vec<T, GC> ToVec<T>(this IEnumerable<T> source) {
+    public static Vec<T, Allocators.GC> ToVec<T>(this IEnumerable<T> source) {
         var items = source.ToArray();
         return new() {
             items = items,
@@ -19,7 +20,7 @@ public static class Vec {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vec<T, GC> Wrap<T>(T[] items) {
+    public static Vec<T, Allocators.GC> Wrap<T>(T[] items) {
         return new() {
             items = items,
             count = items.Length

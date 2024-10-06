@@ -15,8 +15,4 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
-  <ItemGroup>
-    <DirectPInvoke Include="ucrtbase" />
-  </ItemGroup>
-
 </Project>

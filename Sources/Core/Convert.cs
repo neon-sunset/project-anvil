@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace Anvil.Core;
+namespace System;
 
 public interface AsRef<T>
 where T: allows ref struct {

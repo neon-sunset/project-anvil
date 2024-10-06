@@ -1,4 +1,4 @@
-namespace Anvil.Core;
+namespace System;
 
 interface Ctor<T>
 where T: new(), allows ref struct {

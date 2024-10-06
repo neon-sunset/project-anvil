@@ -2,24 +2,20 @@ using System.Collections;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Anvil.Core;
+namespace System;
 
-interface Arr<T>:
-    Into<ReadOnlySpan<T>> {
-}
-
-public ref struct ScopedEnumerator<T>: IEnumerator<T> {
+public ref struct SEnumerator<T>: IEnumerator<T> {
     readonly ref T end;
     ref T current;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ScopedEnumerator(ReadOnlySpan<T> span) {
+    public SEnumerator(ReadOnlySpan<T> span) {
         current = ref MemoryMarshal.GetReference(span);
         end = ref Unsafe.Add(ref current, span.Length);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal ScopedEnumerator(ref T start, nuint length) {
+    internal SEnumerator(ref T start, nuint length) {
         current = ref start;
         end = ref Unsafe.Add(ref start, length);
     }
@@ -43,13 +39,13 @@ public ref struct ScopedEnumerator<T>: IEnumerator<T> {
     readonly void IEnumerator.Reset() => throw new NotSupportedException();
 }
 
-public unsafe struct NativeEnumerator<T>: IEnumerator<T>
+public unsafe struct NEnumerator<T>: IEnumerator<T>
 where T: unmanaged {
     readonly T* end;
     T* current;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal NativeEnumerator(T* start, nuint length) {
+    internal NEnumerator(T* start, nuint length) {
         current = start;
         end = start + length;
     }

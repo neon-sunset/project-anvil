@@ -1,48 +1,50 @@
+using System.Allocators;
 using System.Collections;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
-namespace Anvil.Core.Collections;
+namespace System;
 
-public static class SVec {
+public static class NVec {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static SVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
-    where A: ScopedAllocator => new(items);
+    public static NVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
+    where T: unmanaged
+    where A: NativeAllocator => new(items);
 }
 
 [SkipLocalsInit]
-[CollectionBuilder(typeof(SVec), nameof(SVec.Create))]
-public ref struct SVec<T, A>: IList<T>, IDisposable
-where A: ScopedAllocator {
+[CollectionBuilder(typeof(NVec), nameof(NVec.Create))]
+public unsafe struct NVec<T, A>: IList<T>, IDisposable
+where T: unmanaged
+where A: NativeAllocator {
     static nuint MinSize {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => 128 / (nuint)Unsafe.SizeOf<T>();
+        get => 128 / (nuint)sizeof(T);
     }
 
-    internal ref T items;
+    internal T* items;
     internal nuint count;
     internal nuint capacity;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public SVec() {
-        items = ref Unsafe.NullRef<T>();
+    public NVec() {
+        items = null;
         count = 0;
         capacity = 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public SVec(nuint capacity) {
-        items = ref A.AllocRange<T>(capacity);
+    public NVec(nuint capacity) {
+        items = A.AllocPtr<T>(capacity);
         count = 0;
         this.capacity = capacity;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public SVec(ReadOnlySpan<T> source) {
-        ref var ptr = ref A.AllocRange<T>((uint)source.Length);
-        source.CopyTo(MemoryMarshal.CreateSpan(ref ptr, source.Length));
+    public NVec(ReadOnlySpan<T> source) {
+        var ptr = A.AllocPtr<T>((uint)source.Length);
+        source.CopyTo(new(ptr, source.Length));
 
-        items = ref ptr!;
+        items = ptr;
         count = (uint)source.Length;
         capacity = (uint)source.Length;
     }
@@ -50,7 +52,7 @@ where A: ScopedAllocator {
     public readonly ref T this[nuint index] {
         get {
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, count);
-            return ref Unsafe.Add(ref items, index);
+            return ref Unsafe.AsRef<T>(items + index);
         }
     }
 
@@ -65,28 +67,20 @@ where A: ScopedAllocator {
     readonly bool ICollection<T>.IsReadOnly => false;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Span<T> AsSpan() => MemoryMarshal.CreateSpan(ref items, int.CreateChecked(count));
+    public readonly Span<T> AsSpan() => new(items, int.CreateChecked(count));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item) {
         var cnt = count;
         if (cnt < capacity) {
-            Unsafe.Add(ref items, cnt++) = item;
+            items[cnt++] = item;
             count = cnt;
-            return;
         } else {
             AddGrow(item);
         }
     }
 
-    public void Clear() {
-        ref var ptr = ref items;
-        var cnt = count;
-        if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) {
-            Memory.Clear(ref items, cnt);
-        }
-        count = 0;
-    }
+    public void Clear() => count = 0;
 
     public readonly bool Contains(T item) {
         return IndexOf(item) >= 0;
@@ -97,7 +91,7 @@ where A: ScopedAllocator {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly ScopedEnumerator<T> GetEnumerator() => new(ref items, count);
+    public readonly NEnumerator<T> GetEnumerator() => new(items, count);
 
     public readonly int IndexOf(T item) {
         // TODO: Write optimal dispatch here
@@ -113,7 +107,7 @@ where A: ScopedAllocator {
         if (cnt is 0) {
             throw new InvalidOperationException("Empty Vec");
         }
-        var item = Unsafe.Add(ref items, --cnt);
+        var item = items[--cnt];
         count = cnt;
         return item;
     }
@@ -133,50 +127,54 @@ where A: ScopedAllocator {
 
         count--;
         if ((uint)index < count) {
-            Memory.Copy(
-                ref Unsafe.Add(ref items, (uint)index + 1),
-                ref Unsafe.Add(ref items, (uint)index),
-                count - (uint)index
+            Buffer.MemoryCopy(
+                items + index + 1,
+                items + index,
+                capacity * (nuint)sizeof(T),
+                (count - (uint)index) * (nuint)sizeof(T)
             );
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator Span<T>(SVec<T, A> source) => source.AsSpan();
+    public static implicit operator Span<T>(NVec<T, A> source) => source.AsSpan();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator ReadOnlySpan<T>(SVec<T, A> source) => source.AsSpan();
+    public static implicit operator ReadOnlySpan<T>(NVec<T, A> source) => source.AsSpan();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {
-        ref var ptr = ref items;
-        if (!Unsafe.IsNullRef(ref ptr)) {
-            items = ref Unsafe.NullRef<T>();
+        var ptr = items;
+        if (ptr != null) {
+            items = null;
             count = 0;
             capacity = 0;
-            A.FreeRange(ref ptr);
+            A.FreePtr(ptr);
         }
     }
 
-    readonly IEnumerator<T> IEnumerable<T>.GetEnumerator() => throw new NotSupportedException();
-    readonly IEnumerator IEnumerable.GetEnumerator() => throw new NotSupportedException();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal readonly void Deconstruct(
+        out T* items,
+        out nuint count,
+        out nuint capacity
+    ) {
+        items = this.items;
+        count = this.count;
+        capacity = this.capacity;
+    }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    readonly IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void AddGrow(T item) {
-        ref var ptr = ref items;
-        var cnt = count;
-        var cap = capacity;
+        var (ptr, cnt, cap) = this;
 
-        if (cap != 0) {
-            cap *= 2;
-            ptr = ref A.ReallocRange(ref ptr, cnt, cap)!;
-        }
-        else {
-            cap = MinSize;
-            ptr = ref A.AllocRange<T>(cap)!;
-        }
+        cap = cap != 0 ? cap * 2 : MinSize;
+        ptr = A.ReallocPtr(ptr, cap);
+        ptr[cnt++] = item;
 
-        Unsafe.Add(ref ptr, cnt++) = item;
-        items = ref ptr!;
+        items = ptr;
         count = cnt;
         capacity = cap;
     }
