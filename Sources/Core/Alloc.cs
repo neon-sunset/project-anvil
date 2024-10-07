@@ -1,9 +1,16 @@
 using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using TerraFX.Interop.Mimalloc;
+using MimallocImpl = TerraFX.Interop.Mimalloc.Mimalloc;
 
 namespace System.Allocators;
+
+public static class Allocators {
+    public static GC GC => default;
+    public static Pool Pool => default;
+    public static Mimalloc Mimalloc => default;
+    public static Jermalloc Jemalloc => default;
+}
 
 public interface ManagedAllocator {
     static abstract T[] AllocArray<T>(int length);
@@ -20,6 +27,7 @@ public interface ScopedAllocator {
     static abstract void FreeRange<T>(ref T range);
 }
 
+// TODO: AllocAligned
 public unsafe interface NativeAllocator {
     static abstract T* AllocPtr<T>(nuint count) where T : unmanaged;
     static abstract T* ReallocPtr<T>(T* ptr, nuint newCount) where T : unmanaged;
@@ -85,39 +93,41 @@ public struct Pool: ManagedAllocator {
     }
 }
 
-public unsafe struct Alloc: NativeAllocator, ScopedAllocator {
+public unsafe struct Mimalloc: NativeAllocator, ScopedAllocator {
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static unsafe T* AllocPtr<T>(nuint count) where T : unmanaged {
-        return (T*)Mimalloc.mi_malloc(count * (nuint)sizeof(T));
+        return (T*)MimallocImpl.mi_malloc(count * (nuint)sizeof(T));
     }
 
     public static unsafe T* ReallocPtr<T>(T* ptr, nuint newSize) where T : unmanaged {
-        return (T*)Mimalloc.mi_realloc(ptr, newSize * (nuint)sizeof(T));
+        return (T*)MimallocImpl.mi_realloc(ptr, newSize * (nuint)sizeof(T));
     }
 
     public static unsafe void FreePtr<T>(T* ptr) where T : unmanaged {
-        Mimalloc.mi_free(ptr);
+        MimallocImpl.mi_free(ptr);
     }
 
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static ref T AllocRange<T>(nuint length) {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
 
-        return ref Unsafe.AsRef<T>(Mimalloc.mi_malloc(length * (nuint)sizeof(T)));
+        return ref Unsafe.AsRef<T>(MimallocImpl.mi_malloc(length * (nuint)sizeof(T)));
     }
 
     public static ref T ReallocRange<T>(ref T range, nuint oldLength, nuint newLength) {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
 
-        return ref Unsafe.AsRef<T>(Mimalloc.mi_realloc(Unsafe.AsPointer(ref range), newLength * (nuint)sizeof(T)));
+        return ref Unsafe.AsRef<T>(MimallocImpl.mi_realloc(Unsafe.AsPointer(ref range), newLength * (nuint)sizeof(T)));
     }
 
     public static void FreeRange<T>(ref T range) {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
 
-        Mimalloc.mi_free(Unsafe.AsPointer(ref range));
+        MimallocImpl.mi_free(Unsafe.AsPointer(ref range));
     }
 #pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 }

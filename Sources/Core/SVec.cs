@@ -7,12 +7,16 @@ namespace Anvil.Core.Collections;
 
 public static class SVec {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static SVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
+    public static SVec<T, A> New<T, A>(ReadOnlySpan<T> items)
+    where A: ScopedAllocator => new(items);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static SVec<T, A> New<T, A>(ReadOnlySpan<T> items, A _)
     where A: ScopedAllocator => new(items);
 }
 
 [SkipLocalsInit]
-[CollectionBuilder(typeof(SVec), nameof(SVec.Create))]
+[CollectionBuilder(typeof(SVec), nameof(SVec.New))]
 public ref struct SVec<T, A>: IList<T>, IDisposable
 where A: ScopedAllocator {
     static nuint MinSize {

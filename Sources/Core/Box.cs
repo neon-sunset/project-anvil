@@ -1,5 +1,6 @@
 // TODO: Add MIT license attribution to CommunityToolkit.HighPerformance
 
+using System.Allocators;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -9,56 +10,100 @@ namespace System;
 
 public static class Box {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Box<T> New<T>(T value)
-    where T: struct => Unsafe.As<Box<T>>(value);
+    public static GC<T> GC<T>(T value)
+    where T: struct => Unsafe.As<GC<T>>(value);
 
     [return: NotNullIfNotNull(nameof(nullable))]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Box<T>? New<T>(T? nullable)
-    where T: struct => nullable.HasValue ? Unsafe.As<Box<T>>(nullable.Value) : null;
+    public static GC<T>? GC<T>(T? nullable)
+    where T: struct => nullable.HasValue ? Unsafe.As<GC<T>>(nullable.Value) : null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Box<T, A> New<T, A>(T value)
+    where T: unmanaged
+    where A: NativeAllocator => new(value);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Box<T, A> New<T, A>(T value, A _)
+    where T: unmanaged
+    where A: NativeAllocator => new(value);
 }
 
 [DebuggerDisplay("{ToString(),raw}")]
-public sealed class Box<T>:
+public readonly unsafe struct Box<T, A>:
+    AsUnscopedRef<T>,
     AsUnscopedMut<T>,
     IntoUnscoped<T>,
     Into<Span<T>>,
-    Ctor<T, Box<T>>,
-    ConvUnscoped<object, Box<T>>,
-    TryConvUnscoped<object, Box<T>>,
+    Ctor<T, Box<T, A>>,
     IDisposable
-where T: struct {
-    Box() => throw new InvalidOperationException("Box<T> default constructor should never be used.");
+where T: unmanaged
+where A: NativeAllocator {
+    readonly T* box;
 
-    public ref T Ref {
+    public readonly ref T Ref {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => ref Unsafe.As<StrongBox<T>>(this).Value;
+        get => ref Unsafe.AsRef<T>(box);
     }
 
-    public T Into() => this;
-
-    public static Box<T> New(T value) => Unsafe.As<Box<T>>(value);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Box(T value) {
+        var ptr = A.AllocPtr<T>(1);
+        *ptr = value;
+        box = ptr;
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Box<T> From(object obj) {
+    public static Box<T, A> New(T value) => new(value);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator T*(Box<T, A> value) => value.box;
+
+    ref readonly T AsRef<T>.Ref => ref Ref;
+    T Into<T>.Into() => *box;
+    Span<T> Into<Span<T>>.Into() => new(ref Ref);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Dispose() {
+        var ptr = box;
+        if (default(T) is IDisposable) {
+            ((IDisposable)(*ptr)).Dispose();
+        }
+
+        A.FreePtr(ptr);
+    }
+}
+
+[DebuggerDisplay("{ToString(),raw}")]
+public sealed class GC<T>:
+    Ctor<T, GC<T>>,
+    ConvUnscoped<object, GC<T>>,
+    TryConvUnscoped<object, GC<T>>
+where T: struct {
+    GC() => throw new InvalidOperationException("GC<T> default constructor should never be used.");
+
+    public static GC<T> New(T value) => Unsafe.As<GC<T>>(value);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static GC<T> From(object obj) {
         if (obj.GetType() != typeof(T)) Throw();
-        return Unsafe.As<Box<T>>(obj)!;
+        return Unsafe.As<GC<T>>(obj)!;
 
         [DoesNotReturn, StackTraceHidden]
         static void Throw() {
-            throw new InvalidCastException($"Can't cast the input object to the type Box<{typeof(T)}>");
+            throw new InvalidCastException($"Can't cast the input object to the type GC<{typeof(T)}>");
         }
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public static Box<T> FromUnsafe(object obj) {
-        return Unsafe.As<Box<T>>(obj)!;
+    public static GC<T> FromUnsafe(object obj) {
+        return Unsafe.As<GC<T>>(obj)!;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool TryFrom(object obj, [NotNullWhen(true)] out Box<T>? box) {
+    public static bool TryFrom(object obj, [NotNullWhen(true)] out GC<T>? box) {
         if (obj.GetType() == typeof(T)) {
-            box = Unsafe.As<Box<T>>(obj);
+            box = Unsafe.As<GC<T>>(obj);
             return true;
         }
 
@@ -66,18 +111,13 @@ where T: struct {
         return false;
     }
 
-    public U Into<U>()
-    where U: class => BoxImpl.Into<T, U>(this);
-
-    Span<T> Into<Span<T>>.Into() => new(ref Ref);
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator T(Box<T> box) {
-        return Unsafe.As<StrongBox<T>>(box).Value;
+    public static implicit operator T(GC<T> box) {
+        return box.Ref();
     }
 
     public override string ToString() {
-        return Ref.ToString()!;
+        return this.Ref().ToString()!;
     }
 
     /// <inheritdoc/>
@@ -87,20 +127,17 @@ where T: struct {
 
     /// <inheritdoc/>
     public override int GetHashCode() {
-        return Ref.GetHashCode();
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Dispose() {
-        if (default(T) is IDisposable) {
-            ((IDisposable)Ref).Dispose();
-        }
+        return this.Ref().GetHashCode();
     }
 }
 
-file static class BoxImpl {
+public static class BoxImpl {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static U Into<T, U>(Box<T> box)
+    public static ref T Ref<T>(this GC<T> box)
+    where T: struct => ref Unsafe.As<StrongBox<T>>(box).Value;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static U As<T, U>(GC<T> box)
     where T: struct
     where U: class {
         if (default(T) is not U) Throw();
@@ -109,7 +146,11 @@ file static class BoxImpl {
 
         [DoesNotReturn, StackTraceHidden]
         static void Throw() {
-            throw new InvalidCastException($"The box of type {typeof(T)} can't be cast to the type {typeof(U)}");
+            throw new InvalidCastException($"The GC box of type {typeof(T)} can't be cast to the type {typeof(U)}");
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void Dispose<T>(this GC<T> box)
+    where T: struct, IDisposable => box.Ref().Dispose();
 }

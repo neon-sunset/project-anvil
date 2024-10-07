@@ -1,0 +1,5 @@
+- [ ] Throw helpers to reduce codegen size
+- [ ] Align SVec impl. with NVec and Vec
+- [ ] Complete the implementation of vecs
+- [ ] Add basic test coverage
+- [ ] Try to vendor TerraFX.Mimalloc and build it without assertions (or not for sharing the allocator globally)

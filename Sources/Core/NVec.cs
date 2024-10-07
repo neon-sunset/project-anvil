@@ -6,13 +6,18 @@ namespace System;
 
 public static class NVec {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static NVec<T, A> Create<T, A>(ReadOnlySpan<T> items)
+    public static NVec<T, A> New<T, A>(ReadOnlySpan<T> items)
+    where T: unmanaged
+    where A: NativeAllocator => new(items);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static NVec<T, A> New<T, A>(ReadOnlySpan<T> items, A _)
     where T: unmanaged
     where A: NativeAllocator => new(items);
 }
 
 [SkipLocalsInit]
-[CollectionBuilder(typeof(NVec), nameof(NVec.Create))]
+[CollectionBuilder(typeof(NVec), nameof(NVec.New))]
 public unsafe struct NVec<T, A>: IList<T>, IDisposable
 where T: unmanaged
 where A: NativeAllocator {

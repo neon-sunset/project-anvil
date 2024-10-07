@@ -7,7 +7,11 @@ namespace System;
 
 public static class Vec {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vec<T, A> Create<T, A>(ReadOnlySpan<T> source)
+    public static Vec<T, A> New<T, A>(ReadOnlySpan<T> source)
+    where A: ManagedAllocator => new(source);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vec<T, A> New<T, A>(ReadOnlySpan<T> source, A _)
     where A: ManagedAllocator => new(source);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -68,7 +72,7 @@ public static class Vec {
 }
 
 [SkipLocalsInit]
-[CollectionBuilder(typeof(Vec), nameof(Vec.Create))]
+[CollectionBuilder(typeof(Vec), nameof(Vec.New))]
 public struct Vec<T, A>: IList<T>, IDisposable
 where A: ManagedAllocator {
     static int MinSize {
