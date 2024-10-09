@@ -1,5 +1,6 @@
 using System.Allocators;
 using System.Collections;
+using System.Iter;
 using System.Runtime.CompilerServices;
 
 namespace System;
@@ -39,14 +40,14 @@ where A: NativeAllocator {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public NVec(nuint capacity) {
-        items = A.AllocPtr<T>(capacity);
+        items = (T*)A.Alloc(capacity * (nuint)sizeof(T));
         count = 0;
         this.capacity = capacity;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public NVec(ReadOnlySpan<T> source) {
-        var ptr = A.AllocPtr<T>((uint)source.Length);
+        var ptr = (T*)A.Alloc((uint)source.Length * (nuint)sizeof(T));
         source.CopyTo(new(ptr, source.Length));
 
         items = ptr;
@@ -73,6 +74,43 @@ where A: NativeAllocator {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Span<T> AsSpan() => new(items, int.CreateChecked(count));
+
+    [SkipLocalsInit]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static NVec<T, A> Collect<U>(U iter)
+    where U: Iter<T>, allows ref struct {
+
+        return iter.Count switch {
+            null => Uncounted(iter),
+            nuint n when n > 0 => Counted(iter),
+            _ => default
+        };
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static NVec<T, A> Counted(U iter) {
+            var cap = iter.Count!.Value;
+            var ptr = (T*)A.Alloc(cap * (nuint)sizeof(T));
+            var cnt = (nuint)0;
+
+            while (iter.Next(out var item)) {
+                ptr[cnt++] = item;
+            }
+
+            return new() {
+                items = ptr,
+                count = cnt,
+                capacity = cap
+            };
+        }
+
+        static NVec<T, A> Uncounted(U iter) {
+            var vec = new NVec<T, A>();
+            while (iter.Next(out var item)) {
+                vec.Add(item);
+            }
+            return vec;
+        }
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item) {
@@ -153,7 +191,7 @@ where A: NativeAllocator {
             items = null;
             count = 0;
             capacity = 0;
-            A.FreePtr(ptr);
+            A.Free(ptr);
         }
     }
 
@@ -176,7 +214,7 @@ where A: NativeAllocator {
         var (ptr, cnt, cap) = this;
 
         cap = cap != 0 ? cap * 2 : MinSize;
-        ptr = A.ReallocPtr(ptr, cap);
+        ptr = (T*)A.Realloc(ptr, cap * (nuint)sizeof(T));
         ptr[cnt++] = item;
 
         items = ptr;

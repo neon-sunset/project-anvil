@@ -3,3 +3,10 @@
 - [ ] Complete the implementation of vecs
 - [ ] Add basic test coverage
 - [ ] Try to vendor TerraFX.Mimalloc and build it without assertions (or not for sharing the allocator globally)
+--------------------
+Goals
+- Allocator calls must involve at most a single cctor check
+- Allocator calls must not have extra stubs/trampolines/frames
+- Allocator calls must be ideally cheaper than GC calls
+- Taking on a dependency must not significantly increase binary size
+- The library must be able to use system-provided allocator

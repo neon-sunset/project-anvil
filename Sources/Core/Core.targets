@@ -1,0 +1,11 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+    <ItemGroup Condition="$(RuntimeIdentifier.StartsWith('win'))">
+        <DirectPInvoke Include="ucrtbase" />
+    </ItemGroup>
+
+    <ItemGroup Condition="$(RuntimeIdentifier.StartsWith('linux')) Or $(RuntimeIdentifier.StartsWith('osx')) Or $(RuntimeIdentifier.StartsWith('freebsd'))">
+        <DirectPInvoke Include="libc" />
+    </ItemGroup>
+
+</Project>

@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using MimallocImpl = TerraFX.Interop.Mimalloc.Mimalloc;
 
 namespace System.Allocators;
@@ -8,6 +9,7 @@ namespace System.Allocators;
 public static class Allocators {
     public static GC GC => default;
     public static Pool Pool => default;
+    public static Global Global => default;
     public static Mimalloc Mimalloc => default;
     public static Jermalloc Jemalloc => default;
 }
@@ -29,9 +31,9 @@ public interface ScopedAllocator {
 
 // TODO: AllocAligned
 public unsafe interface NativeAllocator {
-    static abstract T* AllocPtr<T>(nuint count) where T : unmanaged;
-    static abstract T* ReallocPtr<T>(T* ptr, nuint newCount) where T : unmanaged;
-    static abstract void FreePtr<T>(T* ptr) where T : unmanaged;
+    static abstract void* Alloc(nuint size);
+    static abstract void* Realloc(void* ptr, nuint newSize);
+    static abstract void Free(void* ptr);
 }
 
 public struct GC: ManagedAllocator, ScopedAllocator {
@@ -42,6 +44,7 @@ public struct GC: ManagedAllocator, ScopedAllocator {
     public static T[] ReallocArray<T>(T[]? array, int newLength) {
         var result = new T[newLength];
 
+        // FIXME: Invalid code! Will write out of bounds!
         var src = array.AsSpan();
         var dst = MemoryMarshal.CreateSpan(
             ref MemoryMarshal.GetArrayDataReference(result), src.Length);
@@ -86,6 +89,7 @@ public struct Pool: ManagedAllocator {
         return result;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static void FreeArray<T>(T[]? array) {
         if (array != null) {
             ArrayPool<T>.Shared.Return(array);
@@ -93,8 +97,96 @@ public struct Pool: ManagedAllocator {
     }
 }
 
-public unsafe struct Mimalloc: NativeAllocator, ScopedAllocator {
-    [MethodImpl(MethodImplOptions.NoInlining)]
+public unsafe readonly struct Global: NativeAllocator {
+    [SupportedOSPlatform("windows")]
+    static class Ucrt {
+        const string Name = "ucrtbase";
+
+        [SuppressGCTransition]
+        [DllImport(Name, EntryPoint = "malloc")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static extern void* Malloc(nuint size);
+
+        [SuppressGCTransition]
+        [DllImport(Name, EntryPoint = "realloc")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static extern void* Realloc(void* ptr, nuint newSize);
+
+        [SuppressGCTransition]
+        [DllImport(Name, EntryPoint = "free")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static extern void Free(void* ptr);
+    }
+
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("osx")]
+    [SupportedOSPlatform("freebsd")]
+    static class Libc {
+        const string Name = "libc";
+
+        [SuppressGCTransition]
+        [DllImport(Name, EntryPoint = "malloc")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static extern void* Malloc(nuint size);
+
+        [SuppressGCTransition]
+        [DllImport(Name, EntryPoint = "realloc")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static extern void* Realloc(void* ptr, nuint newSize);
+
+        [SuppressGCTransition]
+        [DllImport(Name, EntryPoint = "free")]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static extern void Free(void* ptr);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void* Alloc(nuint size) {
+        if (OperatingSystem.IsWindows()) {
+            return Ucrt.Malloc(size);
+        } else if (
+            OperatingSystem.IsLinux() ||
+            OperatingSystem.IsMacOS() ||
+            OperatingSystem.IsFreeBSD()
+        ) {
+            return Libc.Malloc(size);
+        } else {
+            return NativeMemory.Alloc(size);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void* Realloc(void* ptr, nuint newSize) {
+        if (OperatingSystem.IsWindows()) {
+            return Ucrt.Realloc(ptr, newSize);
+        } else if (
+            OperatingSystem.IsLinux() ||
+            OperatingSystem.IsMacOS() ||
+            OperatingSystem.IsFreeBSD()
+        ) {
+            return Libc.Realloc(ptr, newSize);
+        } else {
+            return NativeMemory.Realloc(ptr, newSize);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void Free(void* ptr) {
+        if (OperatingSystem.IsWindows()) {
+            Ucrt.Free(ptr);
+        } else if (
+            OperatingSystem.IsLinux() ||
+            OperatingSystem.IsMacOS() ||
+            OperatingSystem.IsFreeBSD()
+        ) {
+            Libc.Free(ptr);
+        } else {
+            NativeMemory.Free(ptr);
+        }
+    }
+}
+
+public unsafe struct Mimalloc { //: NativeAllocator, ScopedAllocator {
     public static unsafe T* AllocPtr<T>(nuint count) where T : unmanaged {
         return (T*)MimallocImpl.mi_malloc(count * (nuint)sizeof(T));
     }
@@ -108,7 +200,6 @@ public unsafe struct Mimalloc: NativeAllocator, ScopedAllocator {
     }
 
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
-    [MethodImpl(MethodImplOptions.NoInlining)]
     public static ref T AllocRange<T>(nuint length) {
         ArgumentOutOfRangeException.ThrowIfNotEqual(
             RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
@@ -132,7 +223,7 @@ public unsafe struct Mimalloc: NativeAllocator, ScopedAllocator {
 #pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 }
 
-public unsafe struct Jermalloc: NativeAllocator { /*
+public unsafe struct Jermalloc { /*: NativeAllocator { /*
     ⠀⠀⠀⡯⡯⡾⠝⠘⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢊⠘⡮⣣⠪⠢⡑⡌
     ⠀⠀⠀⠟⠝⠈⠀⠀⠀⠡⠀⠠⢈⠠⢐⢠⢂⢔⣐⢄⡂⢔⠀⡁⢉⠸⢨⢑⠕⡌
     ⠀⠀⡀⠁⠀⠀⠀⡀⢂⠡⠈⡔⣕⢮⣳⢯⣿⣻⣟⣯⣯⢷⣫⣆⡂⠀⠀⢐⠑⡌

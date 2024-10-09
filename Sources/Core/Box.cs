@@ -48,7 +48,7 @@ where A: NativeAllocator {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Box(T value) {
-        var ptr = A.AllocPtr<T>(1);
+        var ptr = (T*)A.Alloc((nuint)sizeof(T));
         *ptr = value;
         box = ptr;
     }
@@ -70,7 +70,7 @@ where A: NativeAllocator {
             ((IDisposable)(*ptr)).Dispose();
         }
 
-        A.FreePtr(ptr);
+        A.Free(ptr);
     }
 }
 

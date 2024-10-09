@@ -123,7 +123,21 @@ where A: ManagedAllocator {
 
     public readonly int Count => count;
 
-    public readonly bool IsReadOnly => false;
+    public int Capacity {
+        readonly get => items?.Length ?? 0;
+        set {
+            var (arr, cnt) = (items, count);
+            ArgumentOutOfRangeException
+                .ThrowIfGreaterThan((uint)value, (uint)cnt);
+            if (value != arr.Length) {
+                items = value is 0
+                    ? A.ReallocArray(arr, value)
+                    : typeof(A) == typeof(GC) ? [] : A.AllocArray<T>(0);
+            }
+        }
+    }
+
+    readonly bool ICollection<T>.IsReadOnly => false;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Span<T> AsSpan() {
