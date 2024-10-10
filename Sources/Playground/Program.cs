@@ -13,16 +13,18 @@ class Program {
         // foreach (var n in numbers.Ref) {
         //     Console.WriteLine(n);
         // }
+
         var numbers = (ReadOnlySpan<int>)[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
         var iter = numbers
             .Iter()
-            .Select((int n) => n * 2)
-            .Select((int n) => (nint)n);
+            .Where((int n) => n % 2 == 0)
+            .Select((int n) => n * 2);
 
-        using var vec = NVec<nint, Global>.Collect(iter);
+        using var vec = Box.New(
+            NVec<int, Global>.Collect(iter), Allocators.Global);
 
-        foreach (var n in vec) {
+        foreach (var n in vec.Ref) {
             Console.WriteLine(n);
         }
     }

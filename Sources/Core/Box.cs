@@ -33,8 +33,8 @@ public static class Box {
 public readonly unsafe struct Box<T, A>:
     AsUnscopedRef<T>,
     AsUnscopedMut<T>,
-    IntoUnscoped<T>,
-    Into<Span<T>>,
+    AsUnscoped<T>,
+    As<Span<T>>,
     Ctor<T, Box<T, A>>,
     IDisposable
 where T: unmanaged
@@ -60,16 +60,16 @@ where A: NativeAllocator {
     public static implicit operator T*(Box<T, A> value) => value.box;
 
     ref readonly T AsRef<T>.Ref => ref Ref;
-    T Into<T>.Into() => *box;
-    Span<T> Into<Span<T>>.Into() => new(ref Ref);
+    T As<T>.As() => *box;
+    Span<T> As<Span<T>>.As() => new(ref Ref);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {
         var ptr = box;
         if (default(T) is IDisposable) {
             ((IDisposable)(*ptr)).Dispose();
+            *ptr = default;
         }
-
         A.Free(ptr);
     }
 }

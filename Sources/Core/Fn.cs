@@ -1,11 +1,11 @@
 namespace System;
 
-interface Fn<T>
+public interface Fn<T>
 where T: allows ref struct {
     T Invoke();
 }
 
-interface Fn<A, T>
+public interface Fn<A, T>
 where A: allows ref struct
 where T: allows ref struct {
     T Invoke(A arg);

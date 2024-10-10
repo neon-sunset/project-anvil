@@ -16,12 +16,12 @@ where T: allows ref struct {
 
 public interface AsUnscopedMut<T>: AsMut<T>;
 
-public interface Into<out T>
+public interface As<out T>
 where T: allows ref struct {
-    T Into();
+    T As();
 }
 
-public interface IntoUnscoped<out T>: Into<T>;
+public interface AsUnscoped<out T>: As<T>;
 
 public interface TryInto<T>
 where T: allows ref struct {

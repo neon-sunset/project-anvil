@@ -102,20 +102,35 @@ public unsafe readonly struct Global: NativeAllocator {
     static class Ucrt {
         const string Name = "ucrtbase";
 
-        [SuppressGCTransition]
-        [DllImport(Name, EntryPoint = "malloc")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static extern void* Malloc(nuint size);
+        public static void* MallocGuard(nuint size) {
+            [SuppressGCTransition]
+            [DllImport(Name, EntryPoint = "malloc")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static extern void* Malloc(nuint size);
 
-        [SuppressGCTransition]
-        [DllImport(Name, EntryPoint = "realloc")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static extern void* Realloc(void* ptr, nuint newSize);
+            return Malloc(size);
+        }
 
-        [SuppressGCTransition]
-        [DllImport(Name, EntryPoint = "free")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static extern void Free(void* ptr);
+        public static void* ReallocGuard(void* ptr, nuint newSize) {
+            [SuppressGCTransition]
+            [DllImport(Name, EntryPoint = "realloc")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static extern void* Realloc(void* ptr, nuint newSize);
+
+            return Realloc(ptr, newSize);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void FreeGuard(void* ptr) {
+            [SuppressGCTransition]
+            [DllImport(Name, EntryPoint = "free")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static extern void Free(void* ptr);
+
+            Free(ptr);
+        }
     }
 
     [SupportedOSPlatform("linux")]
@@ -124,32 +139,47 @@ public unsafe readonly struct Global: NativeAllocator {
     static class Libc {
         const string Name = "libc";
 
-        [SuppressGCTransition]
-        [DllImport(Name, EntryPoint = "malloc")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static extern void* Malloc(nuint size);
+        public static void* MallocGuard(nuint size) {
+            [SuppressGCTransition]
+            [DllImport(Name, EntryPoint = "malloc")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static extern void* Malloc(nuint size);
 
-        [SuppressGCTransition]
-        [DllImport(Name, EntryPoint = "realloc")]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static extern void* Realloc(void* ptr, nuint newSize);
+            return Malloc(size);
+        }
 
-        [SuppressGCTransition]
-        [DllImport(Name, EntryPoint = "free")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static extern void Free(void* ptr);
+        public static void* ReallocGuard(void* ptr, nuint newSize) {
+            [SuppressGCTransition]
+            [DllImport(Name, EntryPoint = "realloc")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static extern void* Realloc(void* ptr, nuint newSize);
+
+            return Realloc(ptr, newSize);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void FreeGuard(void* ptr) {
+            [SuppressGCTransition]
+            [DllImport(Name, EntryPoint = "free")]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static extern void Free(void* ptr);
+
+            Free(ptr);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void* Alloc(nuint size) {
         if (OperatingSystem.IsWindows()) {
-            return Ucrt.Malloc(size);
+            return Ucrt.MallocGuard(size);
         } else if (
             OperatingSystem.IsLinux() ||
             OperatingSystem.IsMacOS() ||
             OperatingSystem.IsFreeBSD()
         ) {
-            return Libc.Malloc(size);
+            return Libc.MallocGuard(size);
         } else {
             return NativeMemory.Alloc(size);
         }
@@ -158,13 +188,13 @@ public unsafe readonly struct Global: NativeAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void* Realloc(void* ptr, nuint newSize) {
         if (OperatingSystem.IsWindows()) {
-            return Ucrt.Realloc(ptr, newSize);
+            return Ucrt.ReallocGuard(ptr, newSize);
         } else if (
             OperatingSystem.IsLinux() ||
             OperatingSystem.IsMacOS() ||
             OperatingSystem.IsFreeBSD()
         ) {
-            return Libc.Realloc(ptr, newSize);
+            return Libc.ReallocGuard(ptr, newSize);
         } else {
             return NativeMemory.Realloc(ptr, newSize);
         }
@@ -173,13 +203,13 @@ public unsafe readonly struct Global: NativeAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Free(void* ptr) {
         if (OperatingSystem.IsWindows()) {
-            Ucrt.Free(ptr);
+            Ucrt.FreeGuard(ptr);
         } else if (
             OperatingSystem.IsLinux() ||
             OperatingSystem.IsMacOS() ||
             OperatingSystem.IsFreeBSD()
         ) {
-            Libc.Free(ptr);
+            Libc.FreeGuard(ptr);
         } else {
             NativeMemory.Free(ptr);
         }

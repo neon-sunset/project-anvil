@@ -27,7 +27,10 @@ public interface ConvIter<U> {
 
 [SkipLocalsInit]
 [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-public ref struct SpanIter<T>(ReadOnlySpan<T> values): Iter<T> {
+public ref struct SpanIter<T>(ReadOnlySpan<T> values):
+    Iter<T>,
+    As<ReadOnlySpan<T>>
+{
     readonly ref T ptr = ref MemoryMarshal.GetReference(values);
     int index = 0;
     readonly int length = values.Length;
@@ -47,6 +50,11 @@ public ref struct SpanIter<T>(ReadOnlySpan<T> values): Iter<T> {
         }
         item = default!;
         return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly ReadOnlySpan<T> As() {
+        return MemoryMarshal.CreateReadOnlySpan(ref ptr, length);
     }
 
     readonly void IDisposable.Dispose() { }

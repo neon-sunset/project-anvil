@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Numerics.Tensors" Version="9.0.0-rtm.24508.17" />
     <PackageReference Include="TerraFX.Interop.Mimalloc" Version="1.6.7.1" />
   </ItemGroup>
 
