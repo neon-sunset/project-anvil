@@ -2,7 +2,6 @@ using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using MimallocImpl = TerraFX.Interop.Mimalloc.Mimalloc;
 
 namespace System.Allocators;
 
@@ -10,7 +9,6 @@ public static class Allocators {
     public static GC GC => default;
     public static Pool Pool => default;
     public static Global Global => default;
-    public static Mimalloc Mimalloc => default;
     public static Jermalloc Jemalloc => default;
 }
 
@@ -214,43 +212,6 @@ public unsafe readonly struct Global: NativeAllocator {
             NativeMemory.Free(ptr);
         }
     }
-}
-
-public unsafe struct Mimalloc { //: NativeAllocator, ScopedAllocator {
-    public static unsafe T* AllocPtr<T>(nuint count) where T : unmanaged {
-        return (T*)MimallocImpl.mi_malloc(count * (nuint)sizeof(T));
-    }
-
-    public static unsafe T* ReallocPtr<T>(T* ptr, nuint newSize) where T : unmanaged {
-        return (T*)MimallocImpl.mi_realloc(ptr, newSize * (nuint)sizeof(T));
-    }
-
-    public static unsafe void FreePtr<T>(T* ptr) where T : unmanaged {
-        MimallocImpl.mi_free(ptr);
-    }
-
-#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
-    public static ref T AllocRange<T>(nuint length) {
-        ArgumentOutOfRangeException.ThrowIfNotEqual(
-            RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
-
-        return ref Unsafe.AsRef<T>(MimallocImpl.mi_malloc(length * (nuint)sizeof(T)));
-    }
-
-    public static ref T ReallocRange<T>(ref T range, nuint oldLength, nuint newLength) {
-        ArgumentOutOfRangeException.ThrowIfNotEqual(
-            RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
-
-        return ref Unsafe.AsRef<T>(MimallocImpl.mi_realloc(Unsafe.AsPointer(ref range), newLength * (nuint)sizeof(T)));
-    }
-
-    public static void FreeRange<T>(ref T range) {
-        ArgumentOutOfRangeException.ThrowIfNotEqual(
-            RuntimeHelpers.IsReferenceOrContainsReferences<T>(), false);
-
-        MimallocImpl.mi_free(Unsafe.AsPointer(ref range));
-    }
-#pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 }
 
 public unsafe struct Jermalloc { /*: NativeAllocator { /*

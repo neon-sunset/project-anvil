@@ -5,6 +5,16 @@ namespace System.Iter;
 
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Where<SpanIter<T>, T> Where<T>(this Span<T> span, Func<T, bool> predicate) {
+        return new(new(span), predicate);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Where<SpanIter<T>, T> Where<T>(this ReadOnlySpan<T> span, Func<T, bool> predicate) {
+        return new(new(span), predicate);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Where<T, U> Where<T, U>(this T iter, Func<U, bool> predicate)
     where T: Iter<U>, allows ref struct
     where U: allows ref struct => new(iter, predicate);

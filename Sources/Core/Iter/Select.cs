@@ -4,13 +4,6 @@ namespace System.Iter;
 
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Select<SpanIter<T>, T, V> Select<T, V>(this T[] array, Func<T, V> func)
-    where V: allows ref struct {
-        ArgumentNullException.ThrowIfNull(array);
-        return new(new(array), func);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Select<SpanIter<T>, T, V> Select<T, V>(this Span<T> span, Func<T, V> func)
     where V: allows ref struct => new(new(span), func);
 

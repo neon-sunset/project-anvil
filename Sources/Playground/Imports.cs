@@ -1,2 +1,2 @@
-global using A = System.Allocators.Mimalloc;
+global using A = System.Allocators.Global;
 global using static System.Generics.Infer;
