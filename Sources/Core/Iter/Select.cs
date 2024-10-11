@@ -1,3 +1,4 @@
+using System.Allocators;
 using System.Runtime.CompilerServices;
 
 namespace System.Iter;
@@ -10,6 +11,12 @@ public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Select<SpanIter<T>, T, V> Select<T, V>(this ReadOnlySpan<T> span, Func<T, V> func)
     where V: allows ref struct => new(new(span), func);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Select<RefIter<T>, T, V> Select<T, V, A>(this NVec<T, A> vec, Func<T, V> func)
+    where T: unmanaged
+    where V: allows ref struct
+    where A: NativeAllocator => new(new(vec), func);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Select<T, U, V> Select<T, U, V>(this T iter, Func<U, V> func)

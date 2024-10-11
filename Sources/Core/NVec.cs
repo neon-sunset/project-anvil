@@ -55,6 +55,16 @@ where A: NativeAllocator {
         capacity = (uint)source.Length;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public NVec(T value, nuint count) {
+        var ptr = (T*)A.Alloc(count * (nuint)sizeof(T));
+        Memory.Fill(ref Unsafe.AsRef<T>(ptr), value, count);
+
+        items = ptr;
+        this.count = count;
+        capacity = count;
+    }
+
     public readonly ref T this[nuint index] {
         get {
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, count);

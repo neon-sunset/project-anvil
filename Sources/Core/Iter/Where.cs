@@ -15,6 +15,11 @@ public static partial class Ops {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Where<RefIter<T>, T> Where<T, A>(this NVec<T, A> vec, Func<T, bool> predicate)
+    where T: unmanaged
+    where A: NativeAllocator => new(new(vec), predicate);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Where<T, U> Where<T, U>(this T iter, Func<U, bool> predicate)
     where T: Iter<U>, allows ref struct
     where U: allows ref struct => new(iter, predicate);

@@ -1,11 +1,22 @@
-using System.Allocators;
 using System.Collections;
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace System.Iter;
 
-public static unsafe class IterImpl {
+public static unsafe partial class Ops {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static SpanIter<T> Iter<T>(
+        [UnscopedRef] params Span<T> span) => new(span);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static SpanIter<T> Iter<T>(
+        [UnscopedRef] params ReadOnlySpan<T> span) => new(span);
+}
+
+public static partial class OpsExt {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static SpanIter<T> Iter<T>(this Span<T> span) => new(span);
 
@@ -57,6 +68,10 @@ public ref struct SpanIter<T>(ReadOnlySpan<T> values):
         return MemoryMarshal.CreateReadOnlySpan(ref ptr, length);
     }
 
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly IterEnumerator<SpanIter<T>, T> GetEnumerator() => new(this);
+
     readonly void IDisposable.Dispose() { }
 }
 
@@ -92,6 +107,10 @@ public ref struct RefIter<T>: Iter<T> {
         item = default!;
         return false;
     }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly IterEnumerator<RefIter<T>, T> GetEnumerator() => new(this);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     readonly void IDisposable.Dispose() { }

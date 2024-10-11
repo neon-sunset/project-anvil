@@ -15,15 +15,6 @@ public static class Vec {
     where A: ManagedAllocator => new(source);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vec<T, Allocators.GC> ToVec<T>(this IEnumerable<T> source) {
-        var items = source.ToArray();
-        return new() {
-            items = items,
-            count = items.Length
-        };
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vec<T, Allocators.GC> Wrap<T>(T[] items) {
         return new() {
             items = items,
