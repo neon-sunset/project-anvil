@@ -27,5 +27,5 @@ where T: Iter<U>, allows ref struct {
         return false;
     }
 
-    readonly void IDisposable.Dispose() => iter.Dispose();
+    public readonly void Dispose() => iter.Dispose();
 }

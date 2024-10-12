@@ -10,3 +10,5 @@ Goals
 - Allocator calls must be ideally cheaper than GC calls
 - Taking on a dependency must not significantly increase binary size
 - The library must be able to use system-provided allocator
+--------------------
+- [ ] Consider "flattening" iter operators by offering chaining via base flat iter holder (i.e. `Iter<T1..Tn>`)

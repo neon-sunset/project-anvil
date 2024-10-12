@@ -72,6 +72,12 @@ public ref struct SpanIter<T>(ReadOnlySpan<T> values):
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly IterEnumerator<SpanIter<T>, T> GetEnumerator() => new(this);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator SpanIter<T>(Span<T> span) => new(span);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator SpanIter<T>(ReadOnlySpan<T> span) => new(span);
+
     readonly void IDisposable.Dispose() { }
 }
 
