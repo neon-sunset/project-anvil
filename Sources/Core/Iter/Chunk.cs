@@ -75,9 +75,12 @@ public ref struct Chunk<T>: Iter<ReadOnlySpan<T>> {
             length -= len;
             return true;
         }
-        item = default;
+        Unsafe.SkipInit(out item);
         return false;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly IterEnumerator<Chunk<T>, ReadOnlySpan<T>> GetEnumerator() => new(this);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly void Dispose() { }

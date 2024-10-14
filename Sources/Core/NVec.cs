@@ -79,11 +79,11 @@ where A: NativeAllocator {
         set => this[(uint)index] = value;
     }
 
-    readonly int ICollection<T>.Count => int.CreateChecked(count);
+    readonly int ICollection<T>.Count => checked((int)count);
     readonly bool ICollection<T>.IsReadOnly => false;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Span<T> AsSpan() => new(items, int.CreateChecked(count));
+    public readonly Span<T> AsSpan() => new(items, checked((int)count));
 
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

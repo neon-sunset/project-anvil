@@ -227,7 +227,7 @@ where A: ManagedAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {
         if (typeof(A) == typeof(GC)) return;
-        var array = Interlocked.Exchange(ref items, null!);
+        var array = items;
         if (array != null) {
             items = null!;
             count = 0;

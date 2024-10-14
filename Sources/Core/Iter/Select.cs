@@ -58,7 +58,7 @@ where V: allows ref struct {
             item = func(value);
             return true;
         }
-        item = default!;
+        Unsafe.SkipInit(out item);
         return false;
     }
 
@@ -85,7 +85,7 @@ where V: allows ref struct {
             item = func.Invoke(value);
             return true;
         }
-        item = default!;
+        Unsafe.SkipInit(out item);
         return false;
     }
 

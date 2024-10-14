@@ -39,7 +39,7 @@ where U: allows ref struct {
             done = true;
             return true;
         }
-        item = default!;
+        Unsafe.SkipInit(out item);
         return false;
     }
 
