@@ -102,7 +102,7 @@ where A: ScopedAllocator {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly SEnumerator<T> GetEnumerator() => new(ref items, count);
+    public readonly RefEnumerator<T> GetEnumerator() => new(ref items, count);
 
     public readonly int IndexOf(T item) {
         // TODO: Write optimal dispatch here

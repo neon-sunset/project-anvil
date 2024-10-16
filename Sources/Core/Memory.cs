@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 namespace System;
 
 static class Memory {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Clear<T>(ref T ptr, nuint count) {
         while (count > 0) {
             var size = Math.Min(count, int.MaxValue);
@@ -16,6 +17,7 @@ static class Memory {
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Copy<T>(ref T src, ref T dst, nuint count) {
         while (count > 0) {
             var size = Math.Min(count, int.MaxValue);
@@ -28,6 +30,7 @@ static class Memory {
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Fill<T>(ref T ptr, T value, nuint count) {
         while (count > 0) {
             var size = Math.Min(count, int.MaxValue);
@@ -38,20 +41,37 @@ static class Memory {
             count -= size;
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static nuint? IndexOf<T>(ref T ptr, nuint length, T value)
+    where T: IEquatable<T> {
+        var offset = (nuint)0;
+        while (length > 0) {
+            var size = Math.Min(length, int.MaxValue);
+            var span = MemoryMarshal.CreateReadOnlySpan(
+                ref Unsafe.Add(ref ptr, offset), (int)(uint)size);
+            var index = span.IndexOf(value);
+            if (index > -1) return offset + (uint)index;
+
+            offset += size;
+            length -= size;
+        }
+        return null;
+    }
 }
 
-public ref struct SEnumerator<T>: IEnumerator<T> {
+public ref struct RefEnumerator<T>: IEnumerator<T> {
     readonly ref T end;
     ref T current;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public SEnumerator(ReadOnlySpan<T> span) {
+    public RefEnumerator(ReadOnlySpan<T> span) {
         current = ref MemoryMarshal.GetReference(span);
         end = ref Unsafe.Add(ref current, span.Length);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal SEnumerator(ref T start, nuint length) {
+    internal RefEnumerator(ref T start, nuint length) {
         current = ref start;
         end = ref Unsafe.Add(ref start, length);
     }
@@ -75,13 +95,13 @@ public ref struct SEnumerator<T>: IEnumerator<T> {
     readonly void IEnumerator.Reset() => throw new NotSupportedException();
 }
 
-public unsafe struct NEnumerator<T>: IEnumerator<T>
+public unsafe struct PtrEnumerator<T>: IEnumerator<T>
 where T: unmanaged {
     readonly T* end;
     T* current;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal NEnumerator(T* start, nuint length) {
+    internal PtrEnumerator(T* start, nuint length) {
         current = start;
         end = start + length;
     }

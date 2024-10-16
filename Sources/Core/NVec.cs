@@ -155,7 +155,7 @@ where A: NativeAllocator {
     public readonly PtrIter<T> Iter() => new(items, count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly NEnumerator<T> GetEnumerator() => new(items, count);
+    public readonly PtrEnumerator<T> GetEnumerator() => new(items, count);
 
     public readonly int IndexOf(T item) {
         // TODO: Write optimal dispatch here

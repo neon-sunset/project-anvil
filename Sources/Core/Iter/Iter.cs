@@ -42,7 +42,7 @@ public ref struct SpanIter<T>(ReadOnlySpan<T> values):
 
     public readonly nuint? Count {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => (uint)length;
+        get => (uint)length - (uint)index;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -59,7 +59,8 @@ public ref struct SpanIter<T>(ReadOnlySpan<T> values):
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly ReadOnlySpan<T> As() {
-        return MemoryMarshal.CreateReadOnlySpan(ref ptr, length);
+        return MemoryMarshal.CreateReadOnlySpan(
+            ref Unsafe.Add(ref ptr, (uint)index), length - index);
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
