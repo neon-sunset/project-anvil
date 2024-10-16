@@ -30,12 +30,6 @@ where T: allows ref struct {
     bool Next(out T item);
 }
 
-public interface ConvIter<U> {
-    static abstract U From<T, V>(T iter)
-    where T: Iter<V>, allows ref struct
-    where V: allows ref struct;
-}
-
 [SkipLocalsInit]
 [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
 public ref struct SpanIter<T>(ReadOnlySpan<T> values):

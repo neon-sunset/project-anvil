@@ -107,7 +107,8 @@ where A: ManagedAllocator {
     public bool Next(out Span<U> item) {
         var cnt = 0;
         var buf = chunk;
-        while (cnt < buf.Length && iter.Next(out buf[cnt++])) ;
+        while (cnt < buf.Length &&
+            iter.Next(out buf[cnt++])) ;
         item = buf.AsSpan(0, cnt);
         return cnt > 0;
     }

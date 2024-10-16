@@ -21,6 +21,7 @@ public static class NVec {
 [CollectionBuilder(typeof(NVec), nameof(NVec.New))]
 public unsafe struct NVec<T, A>:
     As<PtrIter<T>>,
+    ConvIter<NVec<T, A>, T>,
     IList<T>,
     IDisposable
 where T: unmanaged
@@ -124,6 +125,10 @@ where A: NativeAllocator {
             return vec;
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static NVec<T, A> ConvIter<NVec<T, A>, T>.From<U>(U iter) => Collect(iter);
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item) {
