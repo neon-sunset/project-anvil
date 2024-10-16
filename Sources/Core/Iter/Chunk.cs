@@ -61,7 +61,7 @@ public ref struct Chunk<T>: Iter<ReadOnlySpan<T>> {
     public readonly nuint? Count {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get {
-            var (cnt, rem) = Math.DivRem((nuint)length, (nuint)size);
+            var (cnt, rem) = Math.DivRem((uint)length, (uint)size);
             return cnt + (rem > 0 ? (nuint)1 : 0);
         }
     }
@@ -71,7 +71,7 @@ public ref struct Chunk<T>: Iter<ReadOnlySpan<T>> {
         if (length > 0) {
             var len = Math.Min(length, size);
             item = MemoryMarshal.CreateReadOnlySpan(ref ptr, len);
-            ptr = ref Unsafe.Add(ref ptr, len);
+            ptr = ref Unsafe.Add(ref ptr, (uint)len);
             length -= len;
             return true;
         }
@@ -107,9 +107,7 @@ where A: ManagedAllocator {
     public bool Next(out Span<U> item) {
         var cnt = 0;
         var buf = chunk;
-        while (cnt < buf.Length && iter.Next(out var v)) {
-            buf[cnt++] = v;
-        }
+        while (cnt < buf.Length && iter.Next(out buf[cnt++])) ;
         item = buf.AsSpan(0, cnt);
         return cnt > 0;
     }
