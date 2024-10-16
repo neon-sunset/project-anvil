@@ -19,7 +19,10 @@ public static class NVec {
 
 [SkipLocalsInit]
 [CollectionBuilder(typeof(NVec), nameof(NVec.New))]
-public unsafe struct NVec<T, A>: IList<T>, IDisposable
+public unsafe struct NVec<T, A>:
+    As<PtrIter<T>>,
+    IList<T>,
+    IDisposable
 where T: unmanaged
 where A: NativeAllocator {
     static nuint MinSize {
@@ -144,6 +147,9 @@ where A: NativeAllocator {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly PtrIter<T> Iter() => new(items, count);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly NEnumerator<T> GetEnumerator() => new(items, count);
 
     public readonly int IndexOf(T item) {
@@ -193,6 +199,8 @@ where A: NativeAllocator {
     public static implicit operator Span<T>(NVec<T, A> source) => source.AsSpan();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator ReadOnlySpan<T>(NVec<T, A> source) => source.AsSpan();
+
+    readonly PtrIter<T> As<PtrIter<T>>.As() => new(items, count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {

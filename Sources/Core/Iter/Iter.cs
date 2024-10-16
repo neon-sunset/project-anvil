@@ -122,6 +122,39 @@ public ref struct RefIter<T>: Iter<T> {
     readonly void IDisposable.Dispose() { }
 }
 
+[SkipLocalsInit]
+public unsafe struct PtrIter<T>: Iter<T>
+where T: unmanaged {
+    T* current;
+    nuint count;
+
+    public readonly nuint? Count {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => count;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal PtrIter(T* start, nuint length) {
+        current = start;
+        count = length;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Next(out T item) {
+        if (count != 0) {
+            count--;
+            item = *current++;
+            return true;
+        }
+        Unsafe.SkipInit(out item);
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    readonly void IDisposable.Dispose() { }
+}
+
+
 public ref struct IterEnumerator<T, U>(T iter): IEnumerator<U>
 where T: Iter<U>, allows ref struct
 where U: allows ref struct {
