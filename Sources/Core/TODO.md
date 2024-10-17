@@ -12,3 +12,18 @@ Goals
 - The library must be able to use system-provided allocator
 --------------------
 - [ ] Consider "flattening" iter operators by offering chaining via base flat iter holder (i.e. `Iter<T1..Tn>`)
+--------------------
+API
+- Allocators
+    - ManagedAllocator: Pool, GC
+    - ScopedAllocator: GC, any unmanaged
+    - NativeAllocator: Global, Jemalloc
+- Containers
+    - Vec{T}, Vec{T, A}
+    - SVec{T, A}
+    - NVec{T}, NVec{T, A}
+    - Slice{T}, MutSlice{T}
+- Iterators
+    - Iter{T}, IterMut{T}
+    - IntoIter{T}, IntoIterMut{T}?
+    - Standard operators (map, filter, fold, zip, etc.)

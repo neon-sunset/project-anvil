@@ -39,13 +39,6 @@ where U: allows ref struct {
 
 public interface ConvUnscoped<T, out U>: Conv<T, U>;
 
-public interface ConvIter<U, V>
-where U: allows ref struct
-where V: allows ref struct {
-    static abstract U From<T>(T iter)
-    where T: Iter<V>, allows ref struct;
-}
-
 public interface TryConv<T, U>
 where T: allows ref struct
 where U: allows ref struct {

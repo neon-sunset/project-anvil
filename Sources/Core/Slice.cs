@@ -35,8 +35,17 @@ public readonly ref struct Slice<T>:
         get => length;
     }
 
-    ReadOnlySpan<T> As<ReadOnlySpan<T>>.As()
-        => MemoryMarshal.CreateReadOnlySpan(ref ptr, checked((int)length));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator Slice<T>(Span<T> span) => new(span);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator Slice<T>(ReadOnlySpan<T> span) => new(span);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator ReadOnlySpan<T>(Slice<T> slice)
+        => MemoryMarshal.CreateReadOnlySpan(ref slice.ptr, checked((int)slice.length));
+
+    ReadOnlySpan<T> As<ReadOnlySpan<T>>.As() => this;
 }
 
 public readonly ref struct MutSlice<T>:
@@ -71,6 +80,16 @@ public readonly ref struct MutSlice<T>:
         get => length;
     }
 
-    Span<T> As<Span<T>>.As()
-        => MemoryMarshal.CreateSpan(ref ptr, checked((int)length));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator MutSlice<T>(Span<T> span) => new(span);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator Span<T>(MutSlice<T> slice)
+        => MemoryMarshal.CreateSpan(ref slice.ptr, checked((int)slice.length));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator ReadOnlySpan<T>(MutSlice<T> slice)
+        => MemoryMarshal.CreateReadOnlySpan(ref slice.ptr, checked((int)slice.length));
+
+    Span<T> As<Span<T>>.As() => this;
 }

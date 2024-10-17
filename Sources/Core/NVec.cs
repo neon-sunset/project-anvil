@@ -2,6 +2,7 @@ using System.Allocators;
 using System.Collections;
 using System.Iter;
 using System.Runtime.CompilerServices;
+using Anvil.Core;
 
 namespace System;
 
@@ -21,7 +22,6 @@ public static class NVec {
 [CollectionBuilder(typeof(NVec), nameof(NVec.New))]
 public unsafe struct NVec<T, A>:
     As<PtrIter<T>>,
-    ConvIter<NVec<T, A>, T>,
     IList<T>,
     IDisposable
 where T: unmanaged
@@ -70,10 +70,9 @@ where A: NativeAllocator {
     }
 
     public readonly ref T this[nuint index] {
-        get {
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, count);
-            return ref Unsafe.AsRef<T>(items + index);
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => ref Unsafe.AsRef<T>(
+            index < count ? items + index : Throw.IndexOutOfRange());
     }
 
     public readonly nuint Count => count;
@@ -125,9 +124,6 @@ where A: NativeAllocator {
             return vec;
         }
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static NVec<T, A> ConvIter<NVec<T, A>, T>.From<U>(U iter) => Collect(iter);
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

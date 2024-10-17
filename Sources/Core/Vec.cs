@@ -112,7 +112,10 @@ where A: ManagedAllocator {
         set => this[index] = value;
     }
 
-    public readonly int Count => count;
+    public readonly int Count {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => count;
+    }
 
     public int Capacity {
         readonly get => items?.Length ?? 0;
@@ -205,6 +208,12 @@ where A: ManagedAllocator {
             items![count] = default!;
         }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly Span<T> Slice(int start) => AsSpan().Slice(start);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly Span<T> Slice(int start, int length) => AsSpan().Slice(start, length);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void AddGrow(T item) {
