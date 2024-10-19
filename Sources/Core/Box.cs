@@ -31,8 +31,6 @@ public static class Box {
 
 [DebuggerDisplay("{ToString(),raw}")]
 public readonly unsafe struct Box<T, A>:
-    AsUnscopedRef<T>,
-    AsUnscopedMut<T>,
     AsUnscoped<T>,
     As<Span<T>>,
     Ctor<T, Box<T, A>>,
@@ -59,7 +57,6 @@ where A: NativeAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator T*(Box<T, A> value) => value.box;
 
-    ref readonly T AsRef<T>.Ref => ref Ref;
     T As<T>.As() => *box;
     Span<T> As<Span<T>>.As() => new(ref Ref);
 

@@ -1,21 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Iter;
+using System.Generics;
+using System.Runtime.CompilerServices;
 
 namespace System;
-
-public interface AsRef<T>
-where T: allows ref struct {
-    ref readonly T Ref { get; }
-}
-
-public interface AsUnscopedRef<T>: AsRef<T>;
-
-public interface AsMut<T>
-where T: allows ref struct {
-    ref T Ref { get; }
-}
-
-public interface AsUnscopedMut<T>: AsMut<T>;
 
 public interface As<out T>
 where T: allows ref struct {
@@ -46,3 +33,14 @@ where U: allows ref struct {
 }
 
 public interface TryConvUnscoped<T, U>: TryConv<T, U>;
+
+public static class ConvImpl {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static U As<T, U>(this ref T value, TArgs<U> _ = default)
+    where T: struct, As<U>, allows ref struct
+    where U: allows ref struct => value.As();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static U AsUnscoped<T, U>(this ref T value, TArgs<U> _ = default)
+    where T: struct, AsUnscoped<U>, allows ref struct => value.As();
+}

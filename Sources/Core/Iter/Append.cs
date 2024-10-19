@@ -9,11 +9,11 @@ public static partial class Ops {
     where U: allows ref struct => new(iter, value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Append<SpanIter<T>, T> Append<T>(this Span<T> span, T value)
+    public static Append<RefIter<T>, T> Append<T>(this Span<T> span, T value)
         => new(new(span), value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Append<SpanIter<T>, T> Append<T>(this ReadOnlySpan<T> span, T value)
+    public static Append<RefIter<T>, T> Append<T>(this ReadOnlySpan<T> span, T value)
         => new(new(span), value);
 }
 

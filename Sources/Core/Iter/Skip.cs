@@ -5,11 +5,11 @@ namespace System.Iter;
 
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static SpanIter<T> Skip<T>(this Span<T> span, nuint count)
+    public static RefIter<T> Skip<T>(this Span<T> span, nuint count)
         => Skip((ReadOnlySpan<T>)span, count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static SpanIter<T> Skip<T>(this ReadOnlySpan<T> span, nuint count) {
+    public static RefIter<T> Skip<T>(this ReadOnlySpan<T> span, nuint count) {
         return new(span[(int)Math.Max((uint)span.Length, count)..]);
     }
 

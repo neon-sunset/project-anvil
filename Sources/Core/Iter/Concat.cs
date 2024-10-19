@@ -11,19 +11,19 @@ public static partial class Ops {
     where V: allows ref struct => new(lhs, rhs);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Concat<T, SpanIter<U>, U> Concat<T, U>(this T lhs, ReadOnlySpan<U> rhs)
+    public static Concat<T, RefIter<U>, U> Concat<T, U>(this T lhs, ReadOnlySpan<U> rhs)
     where T: Iter<U>, allows ref struct => new(lhs, new(rhs));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Concat<SpanIter<T>, U, T> Concat<T, U>(this Span<T> lhs, U rhs)
+    public static Concat<RefIter<T>, U, T> Concat<T, U>(this Span<T> lhs, U rhs)
     where U: Iter<T>, allows ref struct => new(new(lhs), rhs);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Concat<SpanIter<T>, U, T> Concat<T, U>(this ReadOnlySpan<T> lhs, U rhs)
+    public static Concat<RefIter<T>, U, T> Concat<T, U>(this ReadOnlySpan<T> lhs, U rhs)
     where U: Iter<T>, allows ref struct => new(new(lhs), rhs);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Concat<SpanIter<T>, SpanIter<T>, T> Concat<T>(
+    public static Concat<RefIter<T>, RefIter<T>, T> Concat<T>(
         this ReadOnlySpan<T> lhs, ReadOnlySpan<T> rhs
     ) => new(new(lhs), new(rhs));
 }

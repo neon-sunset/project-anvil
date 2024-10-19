@@ -5,11 +5,11 @@ namespace System.Iter;
 
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Map<SpanIter<T>, T, V> Map<T, V>(this Span<T> span, Func<T, V> func)
+    public static Map<RefIter<T>, T, V> Map<T, V>(this Span<T> span, Func<T, V> func)
     where V: allows ref struct => new(new(span), func);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Map<SpanIter<T>, T, V> Map<T, V>(this ReadOnlySpan<T> span, Func<T, V> func)
+    public static Map<RefIter<T>, T, V> Map<T, V>(this ReadOnlySpan<T> span, Func<T, V> func)
     where V: allows ref struct => new(new(span), func);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -22,6 +22,7 @@ public static class NVec {
 [CollectionBuilder(typeof(NVec), nameof(NVec.New))]
 public unsafe struct NVec<T, A>:
     As<PtrIter<T>>,
+    As<RefIter<T>>,
     IList<T>,
     IDisposable
 where T: unmanaged
@@ -197,11 +198,18 @@ where A: NativeAllocator {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator Slice<T>(NVec<T, A> source) => new(source.items, source.count);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator MutSlice<T>(NVec<T, A> source) => new(source.items, source.count);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Span<T>(NVec<T, A> source) => source.AsSpan();
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator ReadOnlySpan<T>(NVec<T, A> source) => source.AsSpan();
 
     readonly PtrIter<T> As<PtrIter<T>>.As() => new(items, count);
+    readonly RefIter<T> As<RefIter<T>>.As() => new(ref Unsafe.AsRef<T>(items), count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {

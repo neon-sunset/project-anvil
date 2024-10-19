@@ -5,12 +5,12 @@ namespace System.Iter;
 
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Where<SpanIter<T>, T> Where<T>(this Span<T> span, Func<T, bool> predicate) {
+    public static Where<RefIter<T>, T> Where<T>(this Span<T> span, Func<T, bool> predicate) {
         return new(new(span), predicate);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Where<SpanIter<T>, T> Where<T>(this ReadOnlySpan<T> span, Func<T, bool> predicate) {
+    public static Where<RefIter<T>, T> Where<T>(this ReadOnlySpan<T> span, Func<T, bool> predicate) {
         return new(new(span), predicate);
     }
 

@@ -5,11 +5,11 @@ namespace System.Iter;
 
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static SpanIter<T> Take<T>(this Span<T> span, nuint count)
+    public static RefIter<T> Take<T>(this Span<T> span, nuint count)
         => Take((ReadOnlySpan<T>)span, count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static SpanIter<T> Take<T>(this ReadOnlySpan<T> span, nuint count) {
+    public static RefIter<T> Take<T>(this ReadOnlySpan<T> span, nuint count) {
         var length = (int)(uint)Math.Min((uint)span.Length, count);
         return new(span[..length]);
     }
