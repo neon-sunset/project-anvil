@@ -17,15 +17,9 @@ public static partial class Ops {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool All<T>(this Span<T> span, Func<T, bool> predicate)
-        => All((ReadOnlySpan<T>)span, predicate);
+        => All(span.Iter(), predicate);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool All<T>(this ReadOnlySpan<T> span, Func<T, bool> predicate) {
-        foreach (var item in span) {
-            if (!predicate(item)) {
-                return false;
-            }
-        }
-        return true;
-    }
+    public static bool All<T>(this ReadOnlySpan<T> span, Func<T, bool> predicate)
+        => All(span.Iter(), predicate);
 }
