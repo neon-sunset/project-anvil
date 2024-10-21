@@ -6,7 +6,7 @@ namespace System.Iter;
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static U Reduce<T, U>(this T iter, Func<U, U, U> func)
-    where T: Iter<U>, allows ref struct
+    where T: Iterator<U>, allows ref struct
     where U: allows ref struct {
         if (!iter.Next(out var acc)) {
             Throw.EmptySequence();

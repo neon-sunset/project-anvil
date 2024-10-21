@@ -107,7 +107,7 @@ where T: unmanaged {
     }
 
     public T Current { readonly get; private set; }
-    readonly object IEnumerator.Current => Current!;
+    readonly object IEnumerator.Current => throw new NotSupportedException();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool MoveNext() {

@@ -5,7 +5,7 @@ namespace System.Iter;
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static U Fold<T, U, V>(this T iter, U init, Func<U, V, U> f)
-    where T: Iter<V>, allows ref struct
+    where T: Iterator<V>, allows ref struct
     where U: allows ref struct {
         while (iter.Next(out var item)) {
             init = f(init, item);

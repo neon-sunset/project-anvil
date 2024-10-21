@@ -5,7 +5,7 @@ namespace System.Iter;
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Prepend<T, U> Prepend<T, U>(this T iter, U value)
-    where T: Iter<U>, allows ref struct
+    where T: Iterator<U>, allows ref struct
     where U: allows ref struct => new(iter, value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -17,8 +17,8 @@ public static partial class Ops {
         => new(new(span), value);
 }
 
-public ref struct Prepend<T, U>(T iter, U value): Iter<U>
-where T: Iter<U>, allows ref struct
+public ref struct Prepend<T, U>(T iter, U value): Iterator<U>
+where T: Iterator<U>, allows ref struct
 where U: allows ref struct {
     T iter = iter;
     U value = value;
@@ -34,6 +34,15 @@ where U: allows ref struct {
         prepended = true;
         item = value;
         return true;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public nuint AdvanceBy(nuint count) {
+        if (count > 0 && !prepended) {
+            count--;
+            prepended = true;
+        }
+        return iter.AdvanceBy(count);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

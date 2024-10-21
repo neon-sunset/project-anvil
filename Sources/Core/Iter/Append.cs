@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace System.Iter;
@@ -5,7 +6,7 @@ namespace System.Iter;
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Append<T, U> Append<T, U>(this T iter, U value)
-    where T: Iter<U>, allows ref struct
+    where T: Iterator<U>, allows ref struct
     where U: allows ref struct => new(iter, value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -17,8 +18,8 @@ public static partial class Ops {
         => new(new(span), value);
 }
 
-public ref struct Append<T, U>(T iter, U value): Iter<U>
-where T: Iter<U>, allows ref struct
+public ref struct Append<T, U>(T iter, U value): Iterator<U>
+where T: Iterator<U>, allows ref struct
 where U: allows ref struct {
     T iter = iter;
     U value = value;
@@ -44,5 +45,21 @@ where U: allows ref struct {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public nuint AdvanceBy(nuint count) {
+        if (count > 0 && !done) {
+            count = iter.AdvanceBy(count);
+            if (count > 0) {
+                --count;
+                done = true;
+            }
+        }
+        return count;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly void Dispose() => iter.Dispose();
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly IterEnumerator<Append<T, U>, U> GetEnumerator() => new(this);
 }

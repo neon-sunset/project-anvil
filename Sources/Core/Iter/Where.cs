@@ -1,4 +1,5 @@
 using System.Allocators;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace System.Iter;
@@ -21,12 +22,12 @@ public static partial class Ops {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Where<T, U> Where<T, U>(this T iter, Func<U, bool> predicate)
-    where T: Iter<U>, allows ref struct
+    where T: Iterator<U>, allows ref struct
     where U: allows ref struct => new(iter, predicate);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Where<T, U> Where<T, U>(this Where<T, U> iter, Func<U, bool> p2)
-    where T: Iter<U>, allows ref struct
+    where T: Iterator<U>, allows ref struct
     where U: allows ref struct {
         var p1 = iter.predicate;
         return new(iter.iter, x => p1(x) && p2(x));
@@ -34,8 +35,8 @@ public static partial class Ops {
 }
 
 
-public ref struct Where<T, U>(T iter, Func<U, bool> predicate): Iter<U>
-where T: Iter<U>, allows ref struct
+public ref struct Where<T, U>(T iter, Func<U, bool> predicate): Iterator<U>
+where T: Iterator<U>, allows ref struct
 where U: allows ref struct {
     internal T iter = iter;
     internal Func<U, bool> predicate = predicate;
@@ -52,6 +53,17 @@ where U: allows ref struct {
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public nuint AdvanceBy(nuint count) {
+        while (count > 0 && iter.Next(out var item)) {
+            if (predicate(item)) {
+                --count;
+            }
+        }
+        return count;
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly IterEnumerator<Where<T, U>, U> GetEnumerator() => new(this);
 

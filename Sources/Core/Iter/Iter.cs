@@ -29,14 +29,15 @@ public static partial class OpsExt {
     public static RefIter<T> Iter<T>(this ReadOnlySpan<T> span) => new(span);
 }
 
-public interface Iter<T>: IDisposable
+public interface Iterator<T>: IDisposable
 where T: allows ref struct {
     nuint? Count { get; }
     bool Next(out T item);
+    nuint AdvanceBy(nuint count);
 }
 
 [SkipLocalsInit]
-public ref struct RefIter<T>: Iter<T> {
+public ref struct RefIter<T>: Iterator<T> {
     ref T current;
     nuint count;
 
@@ -75,16 +76,24 @@ public ref struct RefIter<T>: Iter<T> {
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public nuint AdvanceBy(nuint count) {
+        count = Math.Min(count, this.count);
+        current = ref Unsafe.Add(ref current, count);
+        this.count -= count;
+        return count;
+    }
+
     [EditorBrowsable(EditorBrowsableState.Never)]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly IterEnumerator<RefIter<T>, T> GetEnumerator() => new(this);
+    public readonly RefEnumerator<T> GetEnumerator() => new(ref current, count);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     readonly void IDisposable.Dispose() { }
 }
 
 [SkipLocalsInit]
-public unsafe struct PtrIter<T>: Iter<T>
+public unsafe struct PtrIter<T>: Iterator<T>
 where T: unmanaged {
     T* current;
     nuint count;
@@ -97,7 +106,7 @@ where T: unmanaged {
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly IterEnumerator<PtrIter<T>, T> GetEnumerator() => new(this);
+    public readonly PtrEnumerator<T> GetEnumerator() => new(current, count);
 
     public readonly nuint? Count {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -116,11 +125,19 @@ where T: unmanaged {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public nuint AdvanceBy(nuint count) {
+        count = Math.Min(count, this.count);
+        this.count -= count;
+        current += count;
+        return count;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     readonly void IDisposable.Dispose() { }
 }
 
 public ref struct IterEnumerator<T, U>(T iter): IEnumerator<U>
-where T: Iter<U>, allows ref struct
+where T: Iterator<U>, allows ref struct
 where U: allows ref struct {
     T iter = iter;
     U current = default!;

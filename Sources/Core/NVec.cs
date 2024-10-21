@@ -92,7 +92,7 @@ where A: NativeAllocator {
     [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static NVec<T, A> Collect<U>(U iter)
-    where U: Iter<T>, allows ref struct {
+    where U: Iterator<T>, allows ref struct {
 
         return iter.Count switch {
             null => Uncounted(iter),

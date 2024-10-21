@@ -6,7 +6,7 @@ namespace System.Iter;
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Nth<T, U>(this T iter, nuint n, out U item)
-    where T: Iter<U>, allows ref struct
+    where T: Iterator<U>, allows ref struct
     where U: allows ref struct {
         while (iter.Next(out item)) {
             if (n == 0) {

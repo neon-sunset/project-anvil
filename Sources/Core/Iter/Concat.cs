@@ -6,21 +6,21 @@ namespace System.Iter;
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Concat<T, U, V> Concat<T, U, V>(this T lhs, U rhs, TArgs<V> _ = default)
-    where T: Iter<V>, allows ref struct
-    where U: Iter<V>, allows ref struct
+    where T: Iterator<V>, allows ref struct
+    where U: Iterator<V>, allows ref struct
     where V: allows ref struct => new(lhs, rhs);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Concat<T, RefIter<U>, U> Concat<T, U>(this T lhs, ReadOnlySpan<U> rhs)
-    where T: Iter<U>, allows ref struct => new(lhs, new(rhs));
+    where T: Iterator<U>, allows ref struct => new(lhs, new(rhs));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Concat<RefIter<T>, U, T> Concat<T, U>(this Span<T> lhs, U rhs)
-    where U: Iter<T>, allows ref struct => new(new(lhs), rhs);
+    where U: Iterator<T>, allows ref struct => new(new(lhs), rhs);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Concat<RefIter<T>, U, T> Concat<T, U>(this ReadOnlySpan<T> lhs, U rhs)
-    where U: Iter<T>, allows ref struct => new(new(lhs), rhs);
+    where U: Iterator<T>, allows ref struct => new(new(lhs), rhs);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Concat<RefIter<T>, RefIter<T>, T> Concat<T>(
@@ -28,9 +28,9 @@ public static partial class Ops {
     ) => new(new(lhs), new(rhs));
 }
 
-public ref struct Concat<T, U, V>(T lhs, U rhs): Iter<V>
-where T: Iter<V>, allows ref struct
-where U: Iter<V>, allows ref struct
+public ref struct Concat<T, U, V>(T lhs, U rhs): Iterator<V>
+where T: Iterator<V>, allows ref struct
+where U: Iterator<V>, allows ref struct
 where V: allows ref struct {
     T lhs = lhs;
     U rhs = rhs;
@@ -52,6 +52,20 @@ where V: allows ref struct {
             right = true;
         }
         return rhs.Next(out item);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public nuint AdvanceBy(nuint count) {
+        if (!right) {
+            count = lhs.AdvanceBy(count);
+            if (count > 0) {
+                right = true;
+            }
+        }
+        if (right) {
+            count = rhs.AdvanceBy(count);
+        }
+        return count;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

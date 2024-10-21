@@ -5,7 +5,7 @@ namespace System.Iter;
 public static partial class Ops {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Any<T, U>(this T iter, Func<U, bool> predicate)
-    where T: Iter<U>, allows ref struct
+    where T: Iterator<U>, allows ref struct
     where U: allows ref struct {
         while (iter.Next(out var item)) {
             if (predicate(item)) {
