@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using Anvil.Core;
 
 namespace System.Iter;
 
@@ -8,14 +7,10 @@ public static partial class Ops {
     public static bool Nth<T, U>(this T iter, nuint n, out U item)
     where T: Iterator<U>, allows ref struct
     where U: allows ref struct {
-        while (iter.Next(out item)) {
-            if (n == 0) {
-                return true;
-            }
-            n--;
+        if (n > 0) {
+            iter.AdvanceBy(n);
         }
-        Throw.IndexOutOfRange<int>();
-        return false;
+        return iter.Next(out item);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
