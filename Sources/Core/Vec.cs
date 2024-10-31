@@ -15,7 +15,7 @@ public static class Vec {
     where A: ManagedAllocator => new(source);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vec<T, Allocators.GC> Wrap<T>(T[] items) {
+    public static Vec<T, Managed> Wrap<T>(T[] items) {
         return new() {
             items = items,
             count = items.Length

@@ -7,12 +7,14 @@ public static partial class Ops {
     public static bool Any<T, U>(this T iter, Func<U, bool> predicate)
     where T: Iterator<U>, allows ref struct
     where U: allows ref struct {
-        while (iter.Next(out var item)) {
-            if (predicate(item)) {
-                return true;
+        using (iter) {
+            while (iter.Next(out var item)) {
+                if (predicate(item)) {
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

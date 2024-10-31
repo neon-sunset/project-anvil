@@ -8,15 +8,17 @@ public static partial class Ops {
     public static U Reduce<T, U>(this T iter, Func<U, U, U> func)
     where T: Iterator<U>, allows ref struct
     where U: allows ref struct {
-        if (!iter.Next(out var acc)) {
-            Throw.EmptySequence();
-        }
+        using (iter) {
+            if (!iter.Next(out var acc)) {
+                Throw.EmptySequence();
+            }
 
-        while (iter.Next(out var item)) {
-            acc = func(acc, item);
-        }
+            while (iter.Next(out var item)) {
+                acc = func(acc, item);
+            }
 
-        return acc;
+            return acc;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

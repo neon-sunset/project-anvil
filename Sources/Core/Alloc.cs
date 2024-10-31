@@ -6,7 +6,7 @@ using System.Runtime.Versioning;
 namespace System.Allocators;
 
 public static class Allocators {
-    public static GC GC => default;
+    public static Managed GC => default;
     public static Pool Pool => default;
     public static Global Global => default;
     public static Jermalloc Jemalloc => default;
@@ -34,7 +34,7 @@ public unsafe interface NativeAllocator {
     static abstract void Free(void* ptr);
 }
 
-public struct GC: ManagedAllocator, ScopedAllocator {
+public struct Managed: ManagedAllocator, ScopedAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T[] AllocArray<T>(int length) => new T[length];
 

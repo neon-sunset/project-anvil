@@ -7,11 +7,13 @@ public static partial class Ops {
     public static U Fold<T, U, V>(this T iter, U init, Func<U, V, U> f)
     where T: Iterator<V>, allows ref struct
     where U: allows ref struct {
-        while (iter.Next(out var item)) {
-            init = f(init, item);
-        }
+        using (iter) {
+            while (iter.Next(out var item)) {
+                init = f(init, item);
+            }
 
-        return init;
+            return init;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
