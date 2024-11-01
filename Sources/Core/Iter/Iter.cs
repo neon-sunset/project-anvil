@@ -47,9 +47,9 @@ public ref struct RefIter<T>: Iterator<T> {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public RefIter(ReadOnlySpan<T> span) {
-        current = ref MemoryMarshal.GetReference(span);
-        count = (uint)span.Length;
+    public RefIter(Slice<T> slice) {
+        current = ref slice.ptr;
+        count = slice.length;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

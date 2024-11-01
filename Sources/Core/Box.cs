@@ -19,9 +19,8 @@ public static class Box {
     where T: struct => nullable.HasValue ? Unsafe.As<GC<T>>(nullable.Value) : null;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Box<T, A> New<T, A>(T value)
-    where T: unmanaged
-    where A: NativeAllocator => new(value);
+    public static Box<T, Global> New<T>(T value)
+    where T: unmanaged => new(value);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Box<T, A> New<T, A>(T value, A _)
@@ -57,6 +56,9 @@ where A: NativeAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator T*(Box<T, A> value) => value.box;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator T(Box<T, A> value) => *value.box;
+
     T As<T>.As() => *box;
     Span<T> As<Span<T>>.As() => new(ref Ref);
 
@@ -65,9 +67,13 @@ where A: NativeAllocator {
         var ptr = box;
         if (default(T) is IDisposable) {
             ((IDisposable)(*ptr)).Dispose();
-            *ptr = default;
         }
         A.Free(ptr);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public override string? ToString() {
+        return Ref.ToString();
     }
 }
 

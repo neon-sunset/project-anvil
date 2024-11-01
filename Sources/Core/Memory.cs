@@ -18,16 +18,10 @@ static class Memory {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Copy<T>(ref T src, ref T dst, nuint count) {
-        while (count > 0) {
-            var size = Math.Min(count, int.MaxValue);
-            MemoryMarshal
-                .CreateSpan(ref src, (int)(uint)size)
-                .CopyTo(MemoryMarshal.CreateSpan(ref dst, (int)(uint)size));
-            src = ref Unsafe.Add(ref src, size);
-            dst = ref Unsafe.Add(ref dst, size);
-            count -= size;
-        }
+    public static unsafe void Copy<T>(T* src, T* dst, nuint count)
+    where T: unmanaged {
+        var length = count * (nuint)sizeof(T);
+        Buffer.MemoryCopy(src, dst, length, length);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -56,6 +50,48 @@ static class Memory {
             offset += size;
             length -= size;
         }
+        return null;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static nuint? IndexOfUnconstrained<T>(ref T ptr, nuint length, T value) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static nuint? IndexOfEquatable<U>(ref T ptr, nuint length, T value)
+        where U: IEquatable<U> {
+            return IndexOf(
+                ref Unsafe.As<T, U>(ref ptr),
+                length,
+                Unsafe.As<T, U>(ref value));
+        }
+
+        var type = typeof(T);
+        if (type.IsValueType && type.IsEnum) {
+            type = type.GetEnumUnderlyingType();
+        }
+
+        if (type == typeof(byte)) return IndexOfEquatable<byte>(ref ptr, length, value);
+        if (type == typeof(sbyte)) return IndexOfEquatable<sbyte>(ref ptr, length, value);
+        if (type == typeof(short)) return IndexOfEquatable<short>(ref ptr, length, value);
+        if (type == typeof(ushort)) return IndexOfEquatable<ushort>(ref ptr, length, value);
+        if (type == typeof(int)) return IndexOfEquatable<int>(ref ptr, length, value);
+        if (type == typeof(uint)) return IndexOfEquatable<uint>(ref ptr, length, value);
+        if (type == typeof(long)) return IndexOfEquatable<long>(ref ptr, length, value);
+        if (type == typeof(ulong)) return IndexOfEquatable<ulong>(ref ptr, length, value);
+        if (type == typeof(nint)) return IndexOfEquatable<nint>(ref ptr, length, value);
+        if (type == typeof(nuint)) return IndexOfEquatable<nuint>(ref ptr, length, value);
+        if (type == typeof(float)) return IndexOfEquatable<float>(ref ptr, length, value);
+        if (type == typeof(double)) return IndexOfEquatable<double>(ref ptr, length, value);
+        if (type == typeof(decimal)) return IndexOfEquatable<decimal>(ref ptr, length, value);
+        if (type == typeof(char)) return IndexOfEquatable<char>(ref ptr, length, value);
+        if (type == typeof(bool)) return IndexOfEquatable<bool>(ref ptr, length, value);
+
+        for (nuint i = 0; i < length; i++) {
+            var item = Unsafe.Add(ref ptr, i);
+            if (EqualityComparer<T>.Default.Equals(item, value)) {
+                return i;
+            }
+        }
+
         return null;
     }
 }

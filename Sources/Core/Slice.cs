@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Iter;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -8,8 +9,8 @@ public readonly ref struct Slice<T>:
     As<RefIter<T>>,
     As<ReadOnlySpan<T>>
 {
-    readonly ref T ptr;
-    readonly nuint length;
+    internal readonly ref T ptr;
+    internal readonly nuint length;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Slice(ReadOnlySpan<T> values) {
@@ -39,6 +40,10 @@ public readonly ref struct Slice<T>:
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public RefIter<T> Iter() => new(ref ptr, length);
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly RefEnumerator<T> GetEnumerator() => new(ref ptr, length);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Slice<T>(Span<T> span) => new(span);
@@ -85,6 +90,10 @@ public readonly ref struct MutSlice<T>:
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => length;
     }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly RefEnumerator<T> GetEnumerator() => new(ref ptr, length);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator MutSlice<T>(Span<T> span) => new(span);

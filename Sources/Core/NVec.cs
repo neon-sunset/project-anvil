@@ -23,8 +23,8 @@ public static class NVec {
 public unsafe struct NVec<T, A>:
     As<PtrIter<T>>,
     As<RefIter<T>>,
-    IList<T>,
-    IDisposable
+    IDisposable,
+    IList<T>
 where T: unmanaged
 where A: NativeAllocator {
     static nuint MinSize {
@@ -89,25 +89,29 @@ where A: NativeAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Span<T> AsSpan() => new(items, checked((int)count));
 
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static NVec<T, A> Collect<U>(U iter)
     where U: Iterator<T>, allows ref struct {
 
         return iter.Count switch {
             null => Uncounted(iter),
-            nuint n when n > 0 => Counted(iter),
+            nuint n when n > 0 => Counted(iter, n),
             _ => default
         };
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static NVec<T, A> Counted(U iter) {
-            var cap = iter.Count!.Value;
+        static NVec<T, A> Counted(U iter, nuint cap) {
             var ptr = (T*)A.Alloc(cap * (nuint)sizeof(T));
             var cnt = (nuint)0;
 
-            while (iter.Next(out var item)) {
-                ptr[cnt++] = item;
+            try {
+                while (iter.Next(out var item)) {
+                    ptr[cnt++] = item;
+                }
+            } catch {
+                A.Free(ptr);
+                throw;
+            } finally {
+                iter.Dispose();
             }
 
             return new() {
@@ -119,13 +123,21 @@ where A: NativeAllocator {
 
         static NVec<T, A> Uncounted(U iter) {
             var vec = new NVec<T, A>();
-            while (iter.Next(out var item)) {
-                vec.Add(item);
+
+            try {
+                while (iter.Next(out var item)) {
+                    vec.Add(item);
+                }
+            } catch {
+                vec.Dispose();
+                throw;
+            } finally {
+                iter.Dispose();
             }
+
             return vec;
         }
     }
-
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item) {
@@ -138,13 +150,22 @@ where A: NativeAllocator {
         }
     }
 
-    public void Clear() => count = 0;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Clear() {
+        if (default(T) is IDisposable) {
+            var slice = (Slice<T>)this;
+            count = 0;
+            slice.DisposeRange();
+        } else {
+            count = 0;
+        }
+    }
 
     public readonly bool Contains(T item) {
         return IndexOf(item) >= 0;
     }
 
-    public readonly void CopyTo(T[] array, int arrayIndex) {
+    readonly void ICollection<T>.CopyTo(T[] array, int arrayIndex) {
         AsSpan().CopyTo(array.AsSpan(arrayIndex));
     }
 
@@ -154,44 +175,69 @@ where A: NativeAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly PtrEnumerator<T> GetEnumerator() => new(items, count);
 
-    public readonly int IndexOf(T item) {
-        // TODO: Write optimal dispatch here
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly nuint? IndexOf(T item)
+        => Memory.IndexOfUnconstrained(ref *items, count, item);
+
+    readonly int IList<T>.IndexOf(T item) {
+        var index = Memory.IndexOfUnconstrained(ref *items, count, item);
+        return index.HasValue ? checked((int)index.Value) : -1;
+    }
+
+    void IList<T>.Insert(int index, T item) {
         throw new NotImplementedException();
     }
 
-    public void Insert(int index, T item) {
-        throw new NotImplementedException();
-    }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Pop() {
         var cnt = count;
         if (cnt is 0) {
-            throw new InvalidOperationException("Empty Vec");
+            Throw.EmptySequence();
         }
-        var item = items[--cnt];
+        cnt -= 1;
+        var item = items[cnt];
         count = cnt;
         return item;
     }
 
-    public bool Remove(T item) {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T Remove(nuint index) {
+        if (index >= count) {
+            Throw.IndexOutOfRange();
+        }
+
+        var item = items[index];
+        count--;
+
+        if (index < count) {
+            Memory.Copy(
+                items + index + 1,
+                items + index,
+                (count - index) * (nuint)sizeof(T)
+            );
+        }
+
+        return item;
+    }
+
+    bool ICollection<T>.Remove(T item) {
         var index = IndexOf(item);
         if (index >= 0) {
-            RemoveAt(index);
+            Remove((uint)index);
             return true;
         }
         return false;
     }
 
-    public void RemoveAt(int index) {
+    void IList<T>.RemoveAt(int index) {
         ArgumentOutOfRangeException
             .ThrowIfGreaterThanOrEqual((uint)index, count);
 
         count--;
         if ((uint)index < count) {
-            Buffer.MemoryCopy(
+            Memory.Copy(
                 items + index + 1,
                 items + index,
-                capacity * (nuint)sizeof(T),
                 (count - (uint)index) * (nuint)sizeof(T)
             );
         }
@@ -208,16 +254,19 @@ where A: NativeAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator ReadOnlySpan<T>(NVec<T, A> source) => source.AsSpan();
 
-    readonly PtrIter<T> As<PtrIter<T>>.As() => new(items, count);
-    readonly RefIter<T> As<RefIter<T>>.As() => new(ref Unsafe.AsRef<T>(items), count);
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {
         var ptr = items;
+        var cnt = count;
         if (ptr != null) {
             items = null;
             count = 0;
             capacity = 0;
+
+            if (default(T) is IDisposable) {
+                new Slice<T>(ptr, cnt).DisposeRange();
+            }
+
             A.Free(ptr);
         }
     }
@@ -233,9 +282,6 @@ where A: NativeAllocator {
         capacity = this.capacity;
     }
 
-    readonly IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
-    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void AddGrow(T item) {
         var (ptr, cnt, cap) = this;
@@ -248,4 +294,13 @@ where A: NativeAllocator {
         count = cnt;
         capacity = cap;
     }
+
+#region Explicit Interface Implementations
+    readonly PtrIter<T> As<PtrIter<T>>.As() => new(items, count);
+    readonly RefIter<T> As<RefIter<T>>.As() => new(ref Unsafe.AsRef<T>(items), count);
+
+    readonly IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+#endregion
 }
