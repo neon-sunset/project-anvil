@@ -214,7 +214,7 @@ public unsafe readonly struct Global: NativeAllocator {
     }
 }
 
-public unsafe struct Jermalloc { /*: NativeAllocator { /*
+public unsafe struct Jermalloc: NativeAllocator { /*
     ⠀⠀⠀⡯⡯⡾⠝⠘⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢊⠘⡮⣣⠪⠢⡑⡌
     ⠀⠀⠀⠟⠝⠈⠀⠀⠀⠡⠀⠠⢈⠠⢐⢠⢂⢔⣐⢄⡂⢔⠀⡁⢉⠸⢨⢑⠕⡌
     ⠀⠀⡀⠁⠀⠀⠀⡀⢂⠡⠈⡔⣕⢮⣳⢯⣿⣻⣟⣯⣯⢷⣫⣆⡂⠀⠀⢐⠑⡌
@@ -241,30 +241,15 @@ public unsafe struct Jermalloc { /*: NativeAllocator { /*
     [SuppressGCTransition]
     [DllImport(Name, EntryPoint = "malloc")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static extern void* Malloc(nuint size);
+    public static extern void* Alloc(nuint size);
 
     [SuppressGCTransition]
     [DllImport(Name, EntryPoint = "realloc")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static extern void* Realloc(void* ptr, nuint newSize);
+    public static extern void* Realloc(void* ptr, nuint newSize);
 
     [SuppressGCTransition]
     [DllImport(Name, EntryPoint = "free")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static extern void Free(void* ptr);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe T* AllocPtr<T>(nuint size) where T : unmanaged {
-        return (T*)Malloc(size * (nuint)sizeof(T));
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe T* ReallocPtr<T>(T* ptr, nuint newSize) where T : unmanaged {
-        return (T*)Realloc(ptr, newSize * (nuint)sizeof(T));
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe void FreePtr<T>(T* ptr) where T : unmanaged {
-        Free(ptr);
-    }
+    public static extern void Free(void* ptr);
 }

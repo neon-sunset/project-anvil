@@ -97,18 +97,18 @@ static class Memory {
 }
 
 public ref struct RefEnumerator<T>: IEnumerator<T> {
+    ref T ptr;
     readonly ref T end;
-    ref T current;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public RefEnumerator(ReadOnlySpan<T> span) {
-        current = ref MemoryMarshal.GetReference(span);
-        end = ref Unsafe.Add(ref current, span.Length);
+        ptr = ref MemoryMarshal.GetReference(span);
+        end = ref Unsafe.Add(ref ptr, span.Length);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal RefEnumerator(ref T start, nuint length) {
-        current = ref start;
+        ptr = ref start;
         end = ref Unsafe.Add(ref start, length);
     }
 
@@ -118,10 +118,9 @@ public ref struct RefEnumerator<T>: IEnumerator<T> {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool MoveNext() {
-        ref var curr = ref current;
-        if (Unsafe.IsAddressLessThan(ref curr, ref end)) {
-            Current = curr;
-            current = ref Unsafe.Add(ref curr, 1);
+        if (Unsafe.IsAddressLessThan(ref ptr, ref end)) {
+            Current = ptr;
+            ptr = ref Unsafe.Add(ref ptr, 1);
             return true;
         }
         return false;
@@ -133,12 +132,12 @@ public ref struct RefEnumerator<T>: IEnumerator<T> {
 
 public unsafe struct PtrEnumerator<T>: IEnumerator<T>
 where T: unmanaged {
+    T* ptr;
     readonly T* end;
-    T* current;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal PtrEnumerator(T* start, nuint length) {
-        current = start;
+        ptr = start;
         end = start + length;
     }
 
@@ -147,10 +146,10 @@ where T: unmanaged {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool MoveNext() {
-        var curr = current;
+        var curr = ptr;
         if (curr < end) {
             Current = *curr;
-            current = curr + 1;
+            ptr = curr + 1;
             return true;
         }
         return false;
