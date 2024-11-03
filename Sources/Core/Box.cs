@@ -72,6 +72,17 @@ where A: NativeAllocator {
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public override bool Equals([NotNullWhen(true)] object? obj) {
+        return obj is Box<T, A> other && Ref.Equals(other.Ref);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Equals(Box<T, A> other) => Ref.Equals(other.Ref);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public override int GetHashCode() => Ref.GetHashCode();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override string? ToString() {
         return Ref.ToString();
     }

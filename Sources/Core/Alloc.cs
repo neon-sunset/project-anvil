@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using TerraFX.Interop.Mimalloc;
 
 namespace System.Allocators;
 
@@ -168,49 +169,102 @@ public unsafe readonly struct Global: NativeAllocator {
         }
     }
 
+    static class MimallocNative {
+        const string Name = "mimalloc-static";
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void* Alloc(nuint size) {
+            [SuppressGCTransition]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [DllImport(Name, EntryPoint = "mi_malloc", CallingConvention = CallingConvention.Cdecl)]
+            static extern unsafe void* Call(nuint size);
+
+            return Call(size);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void* Realloc(void* ptr, nuint newSize) {
+            [SuppressGCTransition]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [DllImport(Name, EntryPoint = "mi_realloc", CallingConvention = CallingConvention.Cdecl)]
+            static extern unsafe void* Call(void* ptr, nuint newSize);
+
+            return Call(ptr, newSize);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Free(void* ptr) {
+            [SuppressGCTransition]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [DllImport(Name, EntryPoint = "mi_free", CallingConvention = CallingConvention.Cdecl)]
+            static extern unsafe void Call(void* ptr);
+
+            Call(ptr);
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void* Alloc(nuint size) {
-        if (OperatingSystem.IsWindows()) {
-            return Ucrt.MallocGuard(size);
-        } else if (
-            OperatingSystem.IsLinux() ||
-            OperatingSystem.IsMacOS() ||
-            OperatingSystem.IsFreeBSD()
-        ) {
-            return Libc.MallocGuard(size);
-        } else {
-            return NativeMemory.Alloc(size);
+        if (RuntimeFeature.IsDynamicCodeCompiled) {
+            return Mimalloc.mi_malloc(size);
         }
+
+        return MimallocNative.Alloc(size);
+
+        // if (OperatingSystem.IsWindows()) {
+        //     return Ucrt.MallocGuard(size);
+        // } else if (
+        //     OperatingSystem.IsLinux() ||
+        //     OperatingSystem.IsMacOS() ||
+        //     OperatingSystem.IsFreeBSD()
+        // ) {
+        //     return Libc.MallocGuard(size);
+        // } else {
+        //     return NativeMemory.Alloc(size);
+        // }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void* Realloc(void* ptr, nuint newSize) {
-        if (OperatingSystem.IsWindows()) {
-            return Ucrt.ReallocGuard(ptr, newSize);
-        } else if (
-            OperatingSystem.IsLinux() ||
-            OperatingSystem.IsMacOS() ||
-            OperatingSystem.IsFreeBSD()
-        ) {
-            return Libc.ReallocGuard(ptr, newSize);
-        } else {
-            return NativeMemory.Realloc(ptr, newSize);
+        if (RuntimeFeature.IsDynamicCodeCompiled) {
+            return Mimalloc.mi_realloc(ptr, newSize);
         }
+
+        return MimallocNative.Realloc(ptr, newSize);
+
+        // if (OperatingSystem.IsWindows()) {
+        //     return Ucrt.ReallocGuard(ptr, newSize);
+        // } else if (
+        //     OperatingSystem.IsLinux() ||
+        //     OperatingSystem.IsMacOS() ||
+        //     OperatingSystem.IsFreeBSD()
+        // ) {
+        //     return Libc.ReallocGuard(ptr, newSize);
+        // } else {
+        //     return NativeMemory.Realloc(ptr, newSize);
+        // }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Free(void* ptr) {
-        if (OperatingSystem.IsWindows()) {
-            Ucrt.FreeGuard(ptr);
-        } else if (
-            OperatingSystem.IsLinux() ||
-            OperatingSystem.IsMacOS() ||
-            OperatingSystem.IsFreeBSD()
-        ) {
-            Libc.FreeGuard(ptr);
-        } else {
-            NativeMemory.Free(ptr);
+        if (RuntimeFeature.IsDynamicCodeCompiled) {
+            Mimalloc.mi_free(ptr);
+            return;
         }
+
+        MimallocNative.Free(ptr);
+
+        // if (OperatingSystem.IsWindows()) {
+        //     Ucrt.FreeGuard(ptr);
+        // } else if (
+        //     OperatingSystem.IsLinux() ||
+        //     OperatingSystem.IsMacOS() ||
+        //     OperatingSystem.IsFreeBSD()
+        // ) {
+        //     Libc.FreeGuard(ptr);
+        // } else {
+        //     NativeMemory.Free(ptr);
+        // }
     }
 }
 

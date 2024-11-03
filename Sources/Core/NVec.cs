@@ -1,5 +1,4 @@
 using System.Allocators;
-using System.Collections;
 using System.Iter;
 using System.Runtime.CompilerServices;
 using Anvil.Core;
@@ -20,7 +19,7 @@ public static class NVec {
 
 [SkipLocalsInit]
 [CollectionBuilder(typeof(NVec), nameof(NVec.New))]
-public unsafe struct NVec<T, A>:
+public unsafe partial struct NVec<T, A>:
     As<PtrIter<T>>,
     As<RefIter<T>>,
     IDisposable,
@@ -78,13 +77,6 @@ where A: NativeAllocator {
 
     public readonly nuint Count => count;
 
-    readonly T IList<T>.this[int index] {
-        get => this[(uint)index];
-        set => this[(uint)index] = value;
-    }
-
-    readonly int ICollection<T>.Count => checked((int)count);
-    readonly bool ICollection<T>.IsReadOnly => false;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Span<T> AsSpan() => new(items, checked((int)count));
@@ -165,10 +157,6 @@ where A: NativeAllocator {
         return IndexOf(item) >= 0;
     }
 
-    readonly void ICollection<T>.CopyTo(T[] array, int arrayIndex) {
-        AsSpan().CopyTo(array.AsSpan(arrayIndex));
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly PtrIter<T> Iter() => new(items, count);
 
@@ -178,15 +166,6 @@ where A: NativeAllocator {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly nuint? IndexOf(T item)
         => Memory.IndexOfUnconstrained(ref *items, count, item);
-
-    readonly int IList<T>.IndexOf(T item) {
-        var index = Memory.IndexOfUnconstrained(ref *items, count, item);
-        return index.HasValue ? checked((int)index.Value) : -1;
-    }
-
-    void IList<T>.Insert(int index, T item) {
-        throw new NotImplementedException();
-    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Pop() {
@@ -219,40 +198,6 @@ where A: NativeAllocator {
 
         return item;
     }
-
-    bool ICollection<T>.Remove(T item) {
-        var index = IndexOf(item);
-        if (index >= 0) {
-            Remove((uint)index);
-            return true;
-        }
-        return false;
-    }
-
-    void IList<T>.RemoveAt(int index) {
-        ArgumentOutOfRangeException
-            .ThrowIfGreaterThanOrEqual((uint)index, count);
-
-        count--;
-        if ((uint)index < count) {
-            Memory.Copy(
-                items + index + 1,
-                items + index,
-                (count - (uint)index) * (nuint)sizeof(T)
-            );
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator Slice<T>(NVec<T, A> source) => new(source.items, source.count);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator MutSlice<T>(NVec<T, A> source) => new(source.items, source.count);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator Span<T>(NVec<T, A> source) => source.AsSpan();
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator ReadOnlySpan<T>(NVec<T, A> source) => source.AsSpan();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() {
@@ -295,12 +240,4 @@ where A: NativeAllocator {
         capacity = cap;
     }
 
-#region Explicit Interface Implementations
-    readonly PtrIter<T> As<PtrIter<T>>.As() => new(items, count);
-    readonly RefIter<T> As<RefIter<T>>.As() => new(ref Unsafe.AsRef<T>(items), count);
-
-    readonly IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
-    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-#endregion
 }
